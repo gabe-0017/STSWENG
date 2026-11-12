@@ -27,9 +27,9 @@ import {
 const roles = [
   {
     id: "senior",
-    label: "SC / PWD Member",
+    label: "SC Member",
     icon: Users,
-    description: "Manage your Senior Citizen or PWD registration and digital ID.",
+    description: "Manage your Senior Citizen registration and digital ID.",
   },
   {
     id: "pwd",
