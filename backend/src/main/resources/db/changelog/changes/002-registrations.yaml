@@ -1,0 +1,73 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-create-senior-citizens
+      author: group05
+      changes:
+        - createTable:
+            tableName: senior_citizens
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column:
+                  name: user_id
+                  type: uuid
+                  constraints: { nullable: false, unique: true, uniqueConstraintName: uq_senior_citizens_user, foreignKeyName: fk_senior_citizens_user, references: users(id) }
+              - column: { name: full_name, type: varchar(200), constraints: { nullable: false } }
+              - column: { name: birth_date, type: date, constraints: { nullable: false } }
+              - column: { name: address, type: varchar(500), constraints: { nullable: false } }
+              - column: { name: contact_number, type: varchar(30) }
+              # HMAC-SHA256 of the normalized government ID number, hex encoded (never the raw number)
+              - column: { name: id_hmac, type: varchar(64), constraints: { nullable: false, unique: true, uniqueConstraintName: uq_senior_citizens_id_hmac } }
+              - column: { name: created_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: version, type: bigint, constraints: { nullable: false } }
+
+  - changeSet:
+      id: 002-create-registrations
+      author: group05
+      changes:
+        - createTable:
+            tableName: registrations
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column:
+                  name: citizen_id
+                  type: uuid
+                  constraints: { nullable: false, foreignKeyName: fk_registrations_citizen, references: senior_citizens(id) }
+              - column: { name: record_type, type: varchar(10), constraints: { nullable: false } }
+              - column: { name: status, type: varchar(20), constraints: { nullable: false } }
+              - column: { name: lgu_code, type: varchar(20), constraints: { nullable: false } }
+              - column: { name: submitted_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: reviewed_at, type: timestamp with time zone }
+              - column:
+                  name: reviewed_by
+                  type: uuid
+                  constraints: { foreignKeyName: fk_registrations_reviewer, references: users(id) }
+              - column: { name: reason, type: varchar(500) }
+              - column: { name: version, type: bigint, constraints: { nullable: false } }
+        - createIndex:
+            tableName: registrations
+            indexName: ix_registrations_status_submitted
+            columns:
+              - column: { name: status }
+              - column: { name: submitted_at }
+        - createIndex:
+            tableName: registrations
+            indexName: ix_registrations_citizen
+            columns:
+              - column: { name: citizen_id }
+
+  - changeSet:
+      id: 002-create-id-cards
+      author: group05
+      changes:
+        - createTable:
+            tableName: id_cards
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column:
+                  name: registration_id
+                  type: uuid
+                  constraints: { nullable: false, unique: true, uniqueConstraintName: uq_id_cards_registration, foreignKeyName: fk_id_cards_registration, references: registrations(id) }
+              - column: { name: card_number, type: varchar(30), constraints: { nullable: false, unique: true, uniqueConstraintName: uq_id_cards_card_number } }
+              - column: { name: issued_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: valid_until, type: date, constraints: { nullable: false } }
+              - column: { name: version, type: bigint, constraints: { nullable: false } }

@@ -1,0 +1,102 @@
+SeniorChain PH - Implementation Checklist
+Based on SeniorChainPH_Development-Plan.docx and the MVP order of work
+Last updated: 2026-11-11
+
+[x] = done   [~] = partly done   [ ] = not started
+
+
+1. PROJECT SETUP (Sprint 0)
+---------------------------
+[x] Spring Boot 4.1.2 / Java 21 backend with Gradle wrapper
+[x] DDD package layout (domain / application / web / config)
+[x] docker-compose.yml with local Postgres
+[x] Liquibase migrations (users, senior_citizens, registrations, id_cards, chain_outbox, audit_log)
+[x] Spring profiles: dev, staging, test
+[x] .gitignore, .env.example, .editorconfig
+[x] Dockerfile (multi-stage, tested with staging profile)
+[x] DEVELOPMENT.md (how to run, demo accounts, endpoints)
+[ ] Git repository + GitFlow branches (main, develop)
+[ ] GitHub Projects board
+[ ] Hardhat node in docker-compose (comes with the contract)
+
+
+2. LIVE LINK / HOSTING (MVP step 1)
+-----------------------------------
+[x] App is ready to deploy (health check, $PORT, env-var secrets, JVM memory flag)
+[ ] render.yaml
+[ ] Neon or Supabase staging database
+[ ] Backend deployed on Render
+[ ] Frontend deployed on Vercel / Netlify / Cloudflare Pages and connected to the API
+
+
+3. LOGIN AND ROLES (MVP step 2)
+-------------------------------
+[x] POST /auth/login returns a JWT (BCrypt passwords)
+[x] POST /auth/signup for senior citizens
+[x] GET /me
+[x] Role checks on every endpoint (SENIOR_CITIZEN, LGU_STAFF, ESTABLISHMENT, GOV_ADMIN)
+[x] CORS limited to configured frontend URLs
+[x] Synthetic demo accounts seeded on startup (dev / staging)
+[ ] Admin endpoint to create LGU / establishment accounts
+[ ] Rate limiting on /auth/login (Bucket4j)
+
+
+4. REGISTRATION AND LGU APPROVAL (MVP step 3)
+---------------------------------------------
+[x] POST /registrations (senior citizen submits)
+[x] Age check: 60 or older for SC IDs
+[x] Duplicate detection with HMAC of the normalized government ID number
+[x] GET /registrations review queue (paginated, filter by status)
+[x] GET /registrations/{id} details
+[x] Approve / reject (with reason) / revoke (with reason)
+[x] Status rules (SUBMITTED -> APPROVED -> REVOKED, SUBMITTED -> REJECTED)
+[x] Optimistic locking (two staff can't change the same record at once)
+[x] ID card issued on approval (card number, 5-year validity)
+[x] GET /me/registration (senior sees own status)
+[x] Audit log of submit / approve / reject / revoke
+[ ] Amend
+[ ] Daily expiry job (EXPIRED status)
+
+
+5. ID CARD AND VERIFICATION (MVP step 4)
+----------------------------------------
+[ ] GET /me/id-card with signed QR token
+[ ] POST /verify returning only {eligible, type, status, validUntil}
+[ ] Verification log
+[ ] Rate limiting on /verify
+[ ] Caffeine cache + eviction on revoke
+
+
+6. BLOCKCHAIN (MVP step 5)
+--------------------------
+[x] LedgerService interface (domain does not know it's a blockchain)
+[x] chain_outbox rows written in the same transaction as approve / revoke
+[x] ledgerStatus shown on registrations (PENDING = "pending on-chain")
+[ ] SeniorRegistry.sol smart contract + Hardhat tests
+[ ] Slither static analysis
+[ ] web3j wrapper / ChainGateway
+[ ] OutboxProcessor (scheduled job that sends rows to the chain)
+[ ] Sepolia deployment + Etherscan link in the UI
+[ ] Nightly consistency check (Postgres vs chain)
+
+
+7. TESTING AND CI
+-----------------
+[x] Domain unit tests (status rules, BirthDate, GovIdNumber, IdHmac)
+[x] Mockito tests (RegistrationService calls ledger and audit correctly)
+[x] HMAC test against an independently computed value
+[x] Testcontainers integration test of the full registration flow
+[x] All 35 tests passing
+[ ] GitHub Actions workflow (5 phases)
+[ ] JaCoCo coverage
+[ ] Spotless / Checkstyle
+[ ] k6 load test
+
+
+8. LATER (outside the MVP)
+--------------------------
+[ ] Discount logging (Idempotency-Key)
+[ ] Tax relief claims
+[ ] Government claim review / validation
+[ ] PWD IDs
+[ ] Optional column encryption for personal data
