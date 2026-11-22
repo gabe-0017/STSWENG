@@ -1,0 +1,16 @@
+# The Docker build context is the repo root. Keep it small and free of secrets.
+.git/
+.env
+.env.*
+
+# Generated folders (the Dockerfile rebuilds them inside the image)
+frontend/node_modules/
+frontend/dist/
+backend/build/
+backend/.gradle/
+
+# Not needed in the image
+*.docx
+.idea/
+.vscode/
+*.iml

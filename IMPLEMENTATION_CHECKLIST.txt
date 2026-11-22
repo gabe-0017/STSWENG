@@ -1,6 +1,6 @@
 CivicCareID PH - Implementation Checklist
 Based on CivicCareID_Development-Plan.docx and the MVP order of work
-Last updated: 2026-11-11
+Last updated: 2026-11-23
 
 [x] = done   [~] = partly done   [ ] = not started
 
@@ -12,11 +12,10 @@ Last updated: 2026-11-11
 [x] docker-compose.yml with local Postgres
 [x] Liquibase migrations (users, senior_citizens, registrations, id_cards, chain_outbox, audit_log)
 [x] Spring profiles: dev, staging, test
-[x] .gitignore, .env.example, .editorconfig
-[x] Dockerfile (multi-stage; originally tested with staging profile)
-[ ] Root Dockerfile builds frontend + backend into one image (rewritten for the single-service setup, not yet built on Render)
-[x] DEVELOPMENT.md (how to run, demo accounts, endpoints)
-[ ] Git repository + GitFlow branches (main, develop)
+[x] .gitignore, .dockerignore, .env.example, .editorconfig, backend/.gitattributes
+[x] Root Dockerfile builds frontend + backend into one image (built and tested locally; not yet built on Render)
+[x] DEVELOPMENT.md (how to run, demo accounts, endpoints, Supabase setup)
+[~] Git repository on GitHub (main); develop branch + GitFlow rules not set up yet
 [ ] GitHub Projects board
 [ ] Hardhat node in docker-compose (comes with the contract)
 
@@ -24,8 +23,8 @@ Last updated: 2026-11-11
 2. LIVE LINK / HOSTING (MVP step 1)
 -----------------------------------
 [x] App is ready to deploy (health check, $PORT, env-var secrets, JVM memory flag)
-[ ] render.yaml (written for a single web service, not yet used)
-[ ] Neon or Supabase staging database
+[~] render.yaml (written for a single web service with Supabase notes, not yet used)
+[ ] Supabase staging database (team is still designing the schema)
 [ ] Backend deployed on Render
 [ ] Frontend served by the same Render service as the API (single URL); old static site retired
 
@@ -87,7 +86,8 @@ Last updated: 2026-11-11
 [x] Mockito tests (RegistrationService calls ledger and audit correctly)
 [x] HMAC test against an independently computed value
 [x] Testcontainers integration test of the full registration flow
-[x] All 35 tests passing
+[x] Tests that the frontend files load without login and other paths still need it
+[x] All 37 tests passing
 [ ] GitHub Actions workflow (5 phases)
 [ ] JaCoCo coverage
 [ ] Spotless / Checkstyle

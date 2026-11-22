@@ -1,0 +1,39 @@
+# Secrets: never commit these (see .env.example for the variable names)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+
+# Java / Gradle (more rules in backend/.gitignore)
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Frontend (also in frontend/.gitignore)
+node_modules/
+dist/
+
+# Hardhat (smart contract, later sprint)
+contracts/artifacts/
+contracts/cache/
+contracts/typechain-types/
+contracts/coverage/
+contracts/coverage.json
+contracts/ignition/deployments/chain-31337/
+
+# IDEs and OS
+.idea/
+*.iml
+*.iws
+.vscode/
+.settings/
+.project
+.classpath
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

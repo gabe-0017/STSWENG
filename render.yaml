@@ -12,7 +12,10 @@ services:
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: staging
-      # Supabase: use the session/direct connection string in JDBC form (jdbc:postgresql://...)
+      # Supabase: use the SESSION POOLER string (Connect > Session pooler), not the direct one.
+      # The direct connection is IPv6-only and Render cannot reach it without a paid add-on.
+      # JDBC form: jdbc:postgresql://aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require
+      # Username for the pooler is postgres.<project-ref> (not just "postgres").
       - key: SPRING_DATASOURCE_URL
         sync: false
       - key: SPRING_DATASOURCE_USERNAME
