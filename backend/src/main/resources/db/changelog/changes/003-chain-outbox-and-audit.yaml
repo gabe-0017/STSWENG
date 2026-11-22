@@ -1,0 +1,49 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-create-chain-outbox
+      author: group05
+      changes:
+        - createTable:
+            tableName: chain_outbox
+            remarks: Pending blockchain writes, sent by a scheduled job (outbox pattern)
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column:
+                  name: registration_id
+                  type: uuid
+                  constraints: { nullable: false, foreignKeyName: fk_chain_outbox_registration, references: registrations(id) }
+              - column: { name: operation, type: varchar(20), constraints: { nullable: false } }
+              - column: { name: payload, type: text, constraints: { nullable: false } }
+              - column: { name: status, type: varchar(20), constraints: { nullable: false } }
+              - column: { name: attempts, type: int, defaultValueNumeric: 0, constraints: { nullable: false } }
+              - column: { name: last_error, type: text }
+              - column: { name: tx_hash, type: varchar(80) }
+              - column: { name: created_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: next_attempt_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: version, type: bigint, constraints: { nullable: false } }
+        - createIndex:
+            tableName: chain_outbox
+            indexName: ix_chain_outbox_status_next_attempt
+            columns:
+              - column: { name: status }
+              - column: { name: next_attempt_at }
+        - createIndex:
+            tableName: chain_outbox
+            indexName: ix_chain_outbox_registration
+            columns:
+              - column: { name: registration_id }
+
+  - changeSet:
+      id: 003-create-audit-log
+      author: group05
+      changes:
+        - createTable:
+            tableName: audit_log
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: actor_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: action, type: varchar(40), constraints: { nullable: false } }
+              - column: { name: target_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: details, type: varchar(500) }
+              - column: { name: created_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: version, type: bigint, constraints: { nullable: false } }

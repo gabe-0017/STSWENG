@@ -1,0 +1,28 @@
+# Render Blueprint: ONE web service that serves the React site and the API.
+# Optional: you can instead enter the same settings by hand in the Render dashboard.
+services:
+  - type: web
+    name: civiccareid
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    branch: main
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: staging
+      # Supabase: use the session/direct connection string in JDBC form (jdbc:postgresql://...)
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      # Render generates a long random value for these once; they stay stable after that
+      - key: JWT_SIGNING_KEY
+        generateValue: true
+      - key: ID_HMAC_SECRET
+        generateValue: true
+      - key: DEMO_DATA_ENABLED
+        value: "false"

@@ -1,0 +1,22 @@
+# Local development services. Start with: docker compose up -d
+# The backend runs from your IDE or `./gradlew bootRun` with the "dev" profile.
+# A Hardhat node service will be added with the smart contract (Sprint 3).
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: civiccare
+      POSTGRES_USER: civiccare
+      POSTGRES_PASSWORD: civiccare   # local only
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U civiccare -d civiccare"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres-data:
