@@ -19,6 +19,7 @@ import {
   WalletCards,
   X,
 } from "lucide-react";
+import { api, saveSession, clearSession, getSession } from "./api";
 
 /* ==========================================================================
    Data
@@ -56,6 +57,13 @@ const roles = [
     description: "Monitor registry activity and benefit claims.",
   },
 ];
+
+const ROLE_MAP = {
+  SENIOR_CITIZEN: "senior",
+  LGU_STAFF: "lgu",
+  ESTABLISHMENT: "establishment",
+  GOV_ADMIN: "government",
+};
 
 /* ==========================================================================
    App shell
