@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ArrowRight,
   BadgeCheck,
@@ -71,7 +71,7 @@ const ROLE_MAP = {
 
 function App() {
   const [page, setPage] = useState("home");
-  const [role, setRole] = useState("senior");
+  const [role, setRole] = useState(() => ROLE_MAP[getSession()?.role] ?? "senior");
   const [mobileMenu, setMobileMenu] = useState(false);
   const [notice, setNotice] = useState("");
 
@@ -82,12 +82,24 @@ function App() {
     setMobileMenu(false);
   }
 
-  function enterDemo() {
+  async function handleLogin(email, password) {
+    const session = await api("/auth/login", {
+      method: "POST", body: { email, password }, auth: false,
+    });
+    saveSession(session);
+    setRole(ROLE_MAP[session.role]);
     setPage("dashboard");
-    setNotice(
-      "Demo mode: the information shown is sample data, not a real government record."
-    );
   }
+
+  function logout() {
+    clearSession();
+    setPage("home");
+  }
+
+  useEffect(() => {
+    window.addEventListener("ccid:logout", logout);
+    return () => window.removeEventListener("ccid:logout", logout);
+  }, []);
 
   return (
     <div className="app-shell">
@@ -131,7 +143,7 @@ function App() {
         <LoginPage
           role={role}
           setRole={setRole}
-          enterDemo={enterDemo}
+          handleLogin={handleLogin}
           setPage={setPage}
         />
       )}
@@ -140,6 +152,7 @@ function App() {
         <Dashboard
           role={role}
           setPage={setPage}
+          logout={logout}
           notice={notice}
           setNotice={setNotice}
         />
@@ -151,7 +164,7 @@ function App() {
           <strong>CivicCareID PH</strong>
         </div>
         
-        <span>@ Gabe and the Gang</span>
+        <span>@ Group 019</span>
       </footer>
     </div>
   );
@@ -277,10 +290,8 @@ function HomePage({ openLogin }) {
           <span className="eyebrow">HOW IT WORKS</span>
           <h2>A simpler process for everyone.</h2>
           <p>
-            <p>
-              CivicCareID PH connects individuals and organizations involved
-              in Senior Citizen and PWD services through one platform.
-            </p>
+            CivicCareID PH connects individuals and organizations involved
+            in Senior Citizen and PWD services through one platform.
           </p>
         </div>
 
@@ -376,7 +387,22 @@ function Step({ number, icon: Icon, title, text }) {
    Login page
    ========================================================================== */
 
-function LoginPage({ role, setRole, enterDemo, setPage }) {
+function LoginPage({ role, setRole, handleLogin, setPage }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [formError, setFormError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function submit() {
+    setFormError("");
+    setLoading(true);
+    try {
+      await handleLogin(email, password);
+    } catch (err) {
+      setFormError(err.message);
+      setLoading(false);
+    }
+  }
   return (
     <main className="auth-layout">
       <div className="auth-aside">
@@ -437,7 +463,13 @@ function LoginPage({ role, setRole, enterDemo, setPage }) {
           <label className="field-label" htmlFor="email">
             Email address
           </label>
-          <input id="email" type="email" placeholder="name@example.com" />
+          <input
+            id="email"
+            type="email"
+            placeholder="name@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
 
           <label className="field-label" htmlFor="password">
             Password
@@ -446,10 +478,21 @@ function LoginPage({ role, setRole, enterDemo, setPage }) {
             id="password"
             type="password"
             placeholder="Enter your password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
           />
 
-          <button className="button primary full" onClick={enterDemo}>
-            Continue to demo dashboard <ArrowRight size={17} />
+          {formError && (
+            <p className="form-error" role="alert">{formError}</p>
+          )}
+
+          <button
+            className="button primary full"
+            onClick={submit}
+            disabled={loading}
+          >
+            {loading ? "Logging in… (the server may be waking up)" : "Log in"}{" "}
+            <ArrowRight size={17} />
           </button>
 
 
@@ -645,7 +688,7 @@ function getTabIcon(tab, index) {
   return <WalletCards size={17} />;
 }
 
-function Dashboard({ role, setPage, notice, setNotice }) {
+function Dashboard({ role, setPage, logout, notice, setNotice }) {
   const [tab, setTab] = useState("Overview");
   const [verified, setVerified] = useState(false);
   const [discounts, setDiscounts] = useState(12);
@@ -687,7 +730,7 @@ function Dashboard({ role, setPage, notice, setNotice }) {
               <small>{selected.label}</small>
             </div>
           </div>
-          <button className="side-link" onClick={() => setPage("home")}>
+          <button className="side-link" onClick={logout}>
             <LogIn size={17} /> Log out
           </button>
         </div>
