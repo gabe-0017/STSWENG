@@ -87,11 +87,11 @@ function App() {
         <button
           className="brand"
           onClick={() => setPage("home")}
-          aria-label="SeniorChain home"
+          aria-label="CivicCareID home"
         >
-          <span className="brand-mark logo-text">SC</span>
+          <span className="brand-mark logo-text">CC</span>
           <span>
-            <strong>SeniorChain</strong>
+            <strong>CivicCareID</strong>
             <small>PHILIPPINES</small>
           </span>
         </button>
@@ -139,8 +139,8 @@ function App() {
 
       <footer className="footer">
         <div className="footer-brand">
-          <span className="brand-mark small logo-text">SC</span>
-          <strong>SeniorChain PH</strong>
+          <span className="brand-mark small logo-text">CC</span>
+          <strong>CivicCareID PH</strong>
         </div>
         
         <span>@ Gabe and the Gang</span>
@@ -270,7 +270,7 @@ function HomePage({ openLogin }) {
           <h2>A simpler process for everyone.</h2>
           <p>
             <p>
-              SeniorChain PH connects individuals and organizations involved
+              CivicCareID PH connects individuals and organizations involved
               in Senior Citizen and PWD services through one platform.
             </p>
           </p>
@@ -335,7 +335,7 @@ function HomePage({ openLogin }) {
       {/* Call to action */}
       <section className="cta">
         <div>
-          <span className="eyebrow light">SENIORCHAIN PH</span>
+          <span className="eyebrow light">CIVICCAREID PH</span>
           <h2>
             Making verification clearer,
             <br />
@@ -373,7 +373,7 @@ function LoginPage({ role, setRole, enterDemo, setPage }) {
     <main className="auth-layout">
       <div className="auth-aside">
         <div className="auth-aside-content">
-          <span className="eyebrow light">WELCOME TO SENIORCHAIN</span>
+          <span className="eyebrow light">WELCOME TO CIVICCAREID</span>
           <h1>
             One platform.
             <br />
@@ -656,8 +656,8 @@ function Dashboard({ role, setPage, notice, setNotice }) {
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <span className="brand-mark logo-text">SC</span>
-          <b>SeniorChain</b>
+          <span className="brand-mark logo-text">CC</span>
+          <b>CivicCareID</b>
         </div>
 
         <div className="sidebar-label">WORKSPACE</div>
@@ -689,7 +689,7 @@ function Dashboard({ role, setPage, notice, setNotice }) {
       <section className="dashboard-main">
         <div className="dash-top">
           <div>
-            <span className="eyebrow">SENIORCHAIN PH / WORKSPACE</span>
+            <span className="eyebrow">CIVICCAREID PH / WORKSPACE</span>
             <h1>{tab}</h1>
             <p className="muted">
               Welcome back. Here's what's happening in your portal.
