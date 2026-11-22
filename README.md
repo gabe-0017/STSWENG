@@ -7,8 +7,9 @@ A responsive React + Vite prototype for the CivicCareID PH academic project.
 - npm
 
 ## Run locally
-1. Extract this project folder.
-2. Open a terminal in the `civiccareid-ph` folder.
+1. Start the backend first (see `DEVELOPMENT.md` at the repo root). Login and registration need it.
+   The local backend creates sample accounts for each role; their emails and password are listed there too.
+2. Open a terminal in the `frontend` folder.
 3. Install dependencies:
 
    ```bash
@@ -23,9 +24,14 @@ A responsive React + Vite prototype for the CivicCareID PH academic project.
 
 5. Open the local URL printed in the terminal (usually `http://localhost:5173`).
 
+Requests to `/api` are forwarded to the backend on `http://localhost:8080` (see `vite.config.js`), so there is nothing to configure.
+
+## Deployment
+The site is built into the backend's Docker image and served by the same Render service, so the website and the API share one URL.
+
 ## Current prototype features
 - Landing page and project overview
-- Role selection and demo login
+- Role selection and login against the backend
 - Senior citizen registration form (local demo interaction only)
 - Senior citizen dashboard and sample digital ID
 - LGU / OSCA application review dashboard
@@ -34,7 +40,8 @@ A responsive React + Vite prototype for the CivicCareID PH academic project.
 - Responsive desktop and mobile layouts
 
 ## Important limitations
-- The **login, registration, and LGU review** screens connect to the CivicCareID PH backend (Spring Boot API + Supabase Postgres) with real authentication and role-based access.
+- **Login** connects to the CivicCareID PH backend (Spring Boot API + Postgres) with real authentication and role-based access.
+- The **registration form and LGU review queue** are being connected next. Until then they show sample data only.
 - The **QR verification, discounts, tax-relief claims, and government dashboard** screens are still simulated. They show sample data and do not read from the backend yet.
 - There is no blockchain integration yet. Registry records are stored in the database only, with a record queued for a future ledger.
 - This is an academic project running on a staging environment. All displayed people, IDs, counts, and transactions are fictional sample data.
