@@ -1,0 +1,16 @@
+.git
+.github
+.idea
+.vscode
+*.iml
+.env
+.env.*
+**/node_modules
+**/dist
+**/build
+**/.gradle
+# The Dockerfile fills this folder from the frontend build; never copy a stale local one
+backend/src/main/resources/static
+*.docx
+*.md
+*.txt
