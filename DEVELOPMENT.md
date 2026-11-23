@@ -84,10 +84,17 @@ Errors use RFC 7807 (`{title, status, detail}`; validation errors add `errors: {
 1. New > Web Service > connect the repo, branch `main`, **Runtime: Docker**, leave Root Directory empty,
    Dockerfile Path `./Dockerfile`. (Or use `render.yaml` as a Blueprint.)
 2. Health Check Path: `/actuator/health`.
-3. Environment variables: `SPRING_PROFILES_ACTIVE=staging`, `SPRING_DATASOURCE_URL` (JDBC form),
+3. Environment variables: `SPRING_PROFILES_ACTIVE=staging`, `SPRING_DATASOURCE_URL`,
    `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `JWT_SIGNING_KEY`, `ID_HMAC_SECRET`.
+   For Neon, use the direct connection (host without `-pooler`) in JDBC form:
+   `jdbc:postgresql://HOST/neondb?sslmode=require`, with the role (usually `neondb_owner`) as the username.
+   Leave out `channel_binding=require`.
    Optional: `DEMO_DATA_ENABLED=true` with a strong `DEMO_PASSWORD` for the demo accounts.
 4. Open the service URL: the React site loads at `/`, the API answers at `/api/v1/**`, Swagger at `/swagger-ui.html`.
+
+Note: Staging uses Neon, not Supabase. Supabase's pooler closed TLS connections coming from Render's free
+instances, so the backend could never start. Neon's free database sleeps when idle, so the first request
+after a quiet period can be slow, and an always-on uptime ping may use up its monthly compute allowance.
 
 ## Environment variables
 
