@@ -25,7 +25,7 @@ Last updated: 2026-11-11
 -----------------------------------
 [x] App is ready to deploy (health check, $PORT, env-var secrets, JVM memory flag)
 [ ] render.yaml (written for a single web service, not yet used)
-[ ] Neon or Supabase staging database
+[x] Neon staging database
 [ ] Backend deployed on Render
 [ ] Frontend served by the same Render service as the API (single URL); old static site retired
 
