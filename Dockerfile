@@ -3,7 +3,7 @@
 # Build context = repository root (frontend/ and backend/ side by side).
 
 # ---- 1) Frontend: React + Vite -> frontend/dist
-FROM node:22-alpine AS frontend
+FROM node:24-alpine AS frontend
 WORKDIR /app/frontend
 # Dependencies first so they are cached between builds
 COPY frontend/package.json frontend/package-lock.json ./
