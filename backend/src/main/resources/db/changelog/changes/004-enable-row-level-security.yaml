@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-enable-row-level-security
+      author: group019
+      comment: Block Supabase's public data API from these tables; the backend connects as the owner and is unaffected
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+              ALTER TABLE senior_citizens ENABLE ROW LEVEL SECURITY;
+              ALTER TABLE registrations ENABLE ROW LEVEL SECURITY;
+              ALTER TABLE id_cards ENABLE ROW LEVEL SECURITY;
+              ALTER TABLE chain_outbox ENABLE ROW LEVEL SECURITY;
+              ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
