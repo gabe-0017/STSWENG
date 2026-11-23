@@ -5,3 +5,5 @@ databaseChangeLog:
       file: db/changelog/changes/002-registrations.yaml
   - include:
       file: db/changelog/changes/003-chain-outbox-and-audit.yaml
+  - include:
+      file: db/changelog/changes/004-enable-row-level-security.yaml
