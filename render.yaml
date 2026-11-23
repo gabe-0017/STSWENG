@@ -12,7 +12,8 @@ services:
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: staging
-      # Supabase: use the session/direct connection string in JDBC form (jdbc:postgresql://...)
+      # Neon: use the DIRECT connection (host without "-pooler") in JDBC form
+      # e.g. jdbc:postgresql://HOST/neondb?sslmode=require (username = the role, e.g. neondb_owner)
       - key: SPRING_DATASOURCE_URL
         sync: false
       - key: SPRING_DATASOURCE_USERNAME
