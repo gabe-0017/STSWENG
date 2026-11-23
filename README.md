@@ -41,7 +41,7 @@ in-memory **Caffeine** cache → Postgres; the chain is the tamper-evident sourc
 Browser ── HTTPS ──► ONE Docker web service on Render (single URL, no CORS needed)
                        ├── React frontend (built by Vite, served as static files by Spring Boot)
                        └── Spring Boot API at /api/v1/** (JWT; modular monolith, also the "gateway")
-   ├── PostgreSQL (Neon/Supabase)   personal data, accounts, workflows, discounts, claims, outbox
+   ├── PostgreSQL (Neon)   personal data, accounts, workflows, discounts, claims, outbox
    ├── Caffeine (in-process cache)  verification lookups, read-only chain calls
    └── web3j ──► Smart contract     local Hardhat node (dev/CI) · Ethereum Sepolia (staging)
                                      stores idHmac → {status, recordType, validUntil}
@@ -70,7 +70,7 @@ Postgres. Only the `ChainGateway` implementation changes; the domain `LedgerServ
 | QR | Frontend library, or **ZXing** if generated server-side |
 | Health / metrics | Spring Boot Actuator |
 | Container | Docker multi-stage, `eclipse-temurin:21-jre` |
-| Hosting | **Render** (one Docker web service: React frontend + API) · **Neon or Supabase** (Postgres) |
+| Hosting | **Render** (one Docker web service: React frontend + API) · **Neon** (Postgres) |
 | CI/CD | **GitHub Actions** (`.github/workflows/ci.yml`), 5 phases — see §8 |
 | Testing | JUnit 5, Mockito, **Testcontainers** (Postgres), Hardhat Solidity/TS tests, JaCoCo, k6 (load) |
 
@@ -178,7 +178,7 @@ Only the backend wallet holds `ISSUER_ROLE`. Discounts/claims stay off-chain (op
 |---|---|
 | Local | `docker compose up` → Postgres + Hardhat node; Spring profile `dev` |
 | CI | Testcontainers Postgres + Hardhat node; synthetic data only |
-| Staging | Render + Neon/Supabase + Sepolia; profile `staging` |
+| Staging | Render + Neon + Sepolia; profile `staging` |
 
 Branching: simplified GitFlow (`main`, `develop`, `feature/<id>-<name>`, `hotfix/<name>`); PR + 1 approval + green CI to merge.
 
