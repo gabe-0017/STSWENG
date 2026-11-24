@@ -17,12 +17,12 @@ A nationwide platform where **Senior Citizens (SCs)** register **once** and rece
 - establishments can **verify eligibility without seeing private details**,
 - establishments **log discounts** and **file tax relief claims** the government can validate.
 
-Scope: **SC IDs first**; data model already supports **PWD IDs later** (`recordType = SC | PWD`).
+Scope: **Senior Citizen (SC) and PWD IDs**. One person can hold both (`recordType = SC | PWD`); PWD registrations carry a disability classification that is only visible to the registrant and LGU staff and is never put on-chain.
 
 ### Users / roles
 | Role | Can do |
 |---|---|
-| `SENIOR_CITIZEN` | Submit registration, view own ID card / QR |
+| `CITIZEN` | Submit SC and/or PWD registrations, view own ID cards / QR |
 | `LGU_STAFF` (LGU / OSCA) | Review queue, approve / reject / revoke registrations |
 | `ESTABLISHMENT` | Scan & verify IDs, log discounts, file tax relief claims |
 | `GOV_ADMIN` (NCSC, BIR) | Oversee registry, validate claims, run ledger consistency check |

@@ -1,6 +1,6 @@
 package ph.civiccare.domain.registration;
 
-/** SC first; PWD is designed in so it needs no schema change later. */
+/** Senior Citizen or Person with Disability ID. */
 public enum RecordType {
     SC,
     PWD

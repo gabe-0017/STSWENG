@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @OpenAPIDefinition(
         info = @Info(title = "CivicCareID PH API", version = "v1",
-                description = "Senior Citizen ID registry. All data in non-production environments is synthetic."),
+                description = "Senior Citizen and PWD ID registry. All data in non-production environments is synthetic."),
         security = @SecurityRequirement(name = "bearer"))
 @SecurityScheme(name = "bearer", type = SecuritySchemeType.HTTP, scheme = "bearer", bearerFormat = "JWT")
 public class OpenApiConfig {

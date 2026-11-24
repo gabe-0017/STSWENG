@@ -19,11 +19,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import ph.civiccare.application.identity.HmacService;
+import ph.civiccare.config.SecurityConfig;
 import ph.civiccare.domain.registration.BirthDate;
 import ph.civiccare.domain.registration.GovIdNumber;
 import ph.civiccare.domain.registration.NewRegistration;
 import ph.civiccare.domain.registration.PersonalDetails;
-import ph.civiccare.domain.registration.RecordType;
 import ph.civiccare.domain.registration.RegistrationService;
 import ph.civiccare.domain.registration.RegistrationStatus;
 import ph.civiccare.web.common.CurrentUser;
@@ -50,12 +50,13 @@ public class RegistrationController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('SENIOR_CITIZEN')")
+    @PreAuthorize("hasRole('CITIZEN')")
     RegistrationDetail submit(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody SubmitRegistrationRequest body) {
         PersonalDetails details = new PersonalDetails(
                 body.fullName(), new BirthDate(body.birthDate()), body.address(), body.contactNumber());
         NewRegistration request = new NewRegistration(
-                details, hmacService.fingerprint(GovIdNumber.of(body.govIdNumber())), RecordType.SC, body.lguCode());
+                details, hmacService.fingerprint(GovIdNumber.of(body.govIdNumber())), body.recordType(),
+                body.disabilityClassification(), body.lguCode());
         return views.detail(registrations.submit(CurrentUser.id(jwt), request));
     }
 
@@ -70,8 +71,8 @@ public class RegistrationController {
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('LGU_STAFF', 'GOV_ADMIN')")
-    RegistrationDetail get(@PathVariable UUID id) {
-        return views.detail(registrations.get(id));
+    RegistrationDetail get(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        return views.detail(registrations.get(id), isLguStaff(jwt));
     }
 
     @PostMapping("/{id}/approve")
@@ -91,6 +92,11 @@ public class RegistrationController {
     @PreAuthorize("hasAnyRole('LGU_STAFF', 'GOV_ADMIN')")
     RegistrationDetail revoke(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id,
                               @Valid @RequestBody ReasonRequest body) {
-        return views.detail(registrations.revoke(id, CurrentUser.id(jwt), body.reason()));
+        return views.detail(registrations.revoke(id, CurrentUser.id(jwt), body.reason()), isLguStaff(jwt));
+    }
+
+    /** Disability details are for LGU staff and the registrant only, not for government admins. */
+    private static boolean isLguStaff(Jwt jwt) {
+        return "LGU_STAFF".equals(jwt.getClaimAsString(SecurityConfig.ROLE_CLAIM));
     }
 }

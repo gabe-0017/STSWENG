@@ -16,11 +16,11 @@ class RegistrationTest {
     private static final UUID REVIEWER = UUID.randomUUID();
 
     private static Registration submitted() {
-        UserAccount account = new UserAccount("a@civiccare.test", "hash", "Test Person", Role.SENIOR_CITIZEN, NOW);
+        UserAccount account = new UserAccount("a@civiccare.test", "hash", "Test Person", Role.CITIZEN, NOW);
         PersonalDetails details = new PersonalDetails("Test Person", new BirthDate(LocalDate.of(1950, 1, 1)),
                 "1 Test St", null);
-        SeniorCitizen citizen = new SeniorCitizen(account, details, new IdHmac("a".repeat(64)), NOW);
-        return Registration.submit(citizen, RecordType.SC, "QC-OSCA", NOW);
+        Citizen citizen = new Citizen(account, details, new IdHmac("a".repeat(64)), NOW);
+        return Registration.submit(citizen, RecordType.SC, null, "QC-OSCA", NOW);
     }
 
     @Test

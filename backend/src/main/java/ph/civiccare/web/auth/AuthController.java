@@ -28,11 +28,11 @@ public class AuthController {
         return TokenResponse.from(authService.login(request.email(), request.password()));
     }
 
-    /** Senior citizen self sign-up. Log in afterwards to get a token. */
+    /** Citizen self sign-up (senior citizen and/or PWD). Log in afterwards to get a token. */
     @PostMapping("/signup")
     @ResponseStatus(HttpStatus.CREATED)
     AccountResponse signup(@Valid @RequestBody SignupRequest request) {
         return AccountResponse.from(
-                authService.signUpSeniorCitizen(request.email(), request.password(), request.fullName()));
+                authService.signUpCitizen(request.email(), request.password(), request.fullName()));
     }
 }

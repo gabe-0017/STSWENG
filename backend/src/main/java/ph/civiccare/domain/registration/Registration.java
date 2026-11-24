@@ -31,11 +31,16 @@ public class Registration {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "citizen_id", nullable = false)
-    private SeniorCitizen citizen;
+    private Citizen citizen;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "record_type", nullable = false)
     private RecordType recordType;
+
+    /** PWD only. Sensitive: never on-chain, never in public verification. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "disability_classification")
+    private DisabilityClassification disabilityClassification;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -62,17 +67,20 @@ public class Registration {
     protected Registration() {
     }
 
-    private Registration(SeniorCitizen citizen, RecordType recordType, String lguCode, Instant submittedAt) {
+    private Registration(Citizen citizen, RecordType recordType, DisabilityClassification classification,
+                         String lguCode, Instant submittedAt) {
         this.id = UUID.randomUUID();
         this.citizen = Require.notNull(citizen, "citizen");
         this.recordType = Require.notNull(recordType, "recordType");
+        this.disabilityClassification = classification;
         this.lguCode = Require.maxLength(Require.notBlank(lguCode, "lguCode"), MAX_LGU_CODE, "lguCode");
         this.submittedAt = Require.notNull(submittedAt, "submittedAt");
         this.status = RegistrationStatus.SUBMITTED;
     }
 
-    public static Registration submit(SeniorCitizen citizen, RecordType recordType, String lguCode, Instant now) {
-        return new Registration(citizen, recordType, lguCode, now);
+    public static Registration submit(Citizen citizen, RecordType recordType,
+                                      DisabilityClassification classification, String lguCode, Instant now) {
+        return new Registration(citizen, recordType, classification, lguCode, now);
     }
 
     public void approve(UUID reviewerId, Instant now) {
@@ -117,12 +125,16 @@ public class Registration {
         return id;
     }
 
-    public SeniorCitizen citizen() {
+    public Citizen citizen() {
         return citizen;
     }
 
     public RecordType recordType() {
         return recordType;
+    }
+
+    public DisabilityClassification disabilityClassification() {
+        return disabilityClassification;
     }
 
     public RegistrationStatus status() {

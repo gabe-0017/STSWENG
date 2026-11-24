@@ -10,7 +10,7 @@ Last updated: 2026-11-11
 [x] Spring Boot 4.1.2 / Java 21 backend with Gradle wrapper
 [x] DDD package layout (domain / application / web / config)
 [x] docker-compose.yml with local Postgres
-[x] Liquibase migrations (users, senior_citizens, registrations, id_cards, chain_outbox, audit_log)
+[x] Liquibase migrations (users, citizens, registrations, id_cards, chain_outbox, audit_log)
 [x] Spring profiles: dev, staging, test
 [x] .gitignore, .env.example, .editorconfig
 [x] Dockerfile (multi-stage; originally tested with staging profile)
@@ -33,9 +33,9 @@ Last updated: 2026-11-11
 3. LOGIN AND ROLES (MVP step 2)
 -------------------------------
 [x] POST /auth/login returns a JWT (BCrypt passwords)
-[x] POST /auth/signup for senior citizens
+[x] POST /auth/signup for citizens (SC and PWD)
 [x] GET /me
-[x] Role checks on every endpoint (SENIOR_CITIZEN, LGU_STAFF, ESTABLISHMENT, GOV_ADMIN)
+[x] Role checks on every endpoint (CITIZEN, LGU_STAFF, ESTABLISHMENT, GOV_ADMIN)
 [x] CORS limited to configured frontend URLs
 [x] Synthetic demo accounts seeded on startup (dev / staging)
 [ ] Admin endpoint to create LGU / establishment accounts
@@ -44,8 +44,10 @@ Last updated: 2026-11-11
 
 4. REGISTRATION AND LGU APPROVAL (MVP step 3)
 ---------------------------------------------
-[x] POST /registrations (senior citizen submits)
-[x] Age check: 60 or older for SC IDs
+[x] POST /registrations (citizen submits an SC or PWD application)
+[x] Age check: 60 or older for SC IDs (none for PWD)
+[x] PWD disability classification (required for PWD, hidden from GOV_ADMIN, never on-chain)
+[x] One open registration per type per person (partial unique index)
 [x] Duplicate detection with HMAC of the normalized government ID number
 [x] GET /registrations review queue (paginated, filter by status)
 [x] GET /registrations/{id} details
@@ -53,7 +55,7 @@ Last updated: 2026-11-11
 [x] Status rules (SUBMITTED -> APPROVED -> REVOKED, SUBMITTED -> REJECTED)
 [x] Optimistic locking (two staff can't change the same record at once)
 [x] ID card issued on approval (card number, 5-year validity)
-[x] GET /me/registration (senior sees own status)
+[x] GET /me/registration and /me/registrations (citizen sees own status)
 [x] Audit log of submit / approve / reject / revoke
 [ ] Amend
 [ ] Daily expiry job (EXPIRED status)

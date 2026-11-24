@@ -8,11 +8,12 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 import ph.civiccare.domain.ledger.LedgerSyncStatus;
+import ph.civiccare.domain.registration.DisabilityClassification;
 import ph.civiccare.domain.registration.IdCard;
 import ph.civiccare.domain.registration.RecordType;
 import ph.civiccare.domain.registration.Registration;
 import ph.civiccare.domain.registration.RegistrationStatus;
-import ph.civiccare.domain.registration.SeniorCitizen;
+import ph.civiccare.domain.registration.Citizen;
 
 /** Request and response bodies for /api/v1/registrations. */
 public final class RegistrationDtos {
@@ -20,8 +21,13 @@ public final class RegistrationDtos {
     private RegistrationDtos() {
     }
 
-    /** Senior Citizen ID application. govIdNumber is only fingerprinted, never stored. */
+    /**
+     * ID application, Senior Citizen (SC) or PWD. govIdNumber is only fingerprinted, never stored.
+     * disabilityClassification is required for PWD and must be omitted for SC.
+     */
     public record SubmitRegistrationRequest(
+            @NotNull RecordType recordType,
+            DisabilityClassification disabilityClassification,
             @NotBlank @Size(max = 200) String fullName,
             @NotNull @Past LocalDate birthDate,
             @NotBlank @Size(max = 500) String address,
@@ -50,7 +56,7 @@ public final class RegistrationDtos {
 
     public record Applicant(String fullName, LocalDate birthDate, String address, String contactNumber) {
 
-        static Applicant from(SeniorCitizen c) {
+        static Applicant from(Citizen c) {
             return new Applicant(c.fullName(), c.birthDate().value(), c.address(), c.contactNumber());
         }
     }
@@ -64,10 +70,13 @@ public final class RegistrationDtos {
 
     /**
      * Full view for the LGU reviewer, government admin or the registrant.
+     * disabilityClassification is sensitive: null for SC, and hidden from everyone except the
+     * registrant and LGU staff.
      * idCard and ledgerStatus are null until the registration is approved.
      * ledgerStatus PENDING means "Approved – pending on-chain".
      */
-    public record RegistrationDetail(UUID id, RecordType recordType, RegistrationStatus status, String lguCode,
+    public record RegistrationDetail(UUID id, RecordType recordType, DisabilityClassification disabilityClassification,
+                                     RegistrationStatus status, String lguCode,
                                      Instant submittedAt, Instant reviewedAt, String reason, Applicant applicant,
                                      IdCardInfo idCard, LedgerSyncStatus ledgerStatus) {
     }

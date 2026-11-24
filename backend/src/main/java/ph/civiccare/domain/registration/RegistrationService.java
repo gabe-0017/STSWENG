@@ -5,7 +5,10 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.EnumSet;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -30,8 +33,12 @@ public class RegistrationService {
     /** Dates on IDs follow Philippine time. */
     public static final ZoneId PH_ZONE = ZoneId.of("Asia/Manila");
 
+    /** A person may hold one registration of each type in these states at a time. */
+    private static final Set<RegistrationStatus> OPEN_STATUSES = EnumSet.of(
+            RegistrationStatus.SUBMITTED, RegistrationStatus.APPROVED, RegistrationStatus.AMENDED);
+
     private final UserAccountRepository accounts;
-    private final SeniorCitizenRepository citizens;
+    private final CitizenRepository citizens;
     private final RegistrationRepository registrations;
     private final IdCardRepository idCards;
     private final LedgerService ledger;
@@ -41,7 +48,7 @@ public class RegistrationService {
     private final SecureRandom random = new SecureRandom();
 
     public RegistrationService(UserAccountRepository accounts,
-                               SeniorCitizenRepository citizens,
+                               CitizenRepository citizens,
                                RegistrationRepository registrations,
                                IdCardRepository idCards,
                                LedgerService ledger,
@@ -62,18 +69,32 @@ public class RegistrationService {
     public Registration submit(UUID accountId, NewRegistration request) {
         UserAccount account = accounts.findById(accountId)
                 .orElseThrow(() -> new NotFoundException("Account not found"));
-        if (citizens.existsByAccountId(accountId) || citizens.existsByIdHmac(request.idHmac())) {
-            throw new DuplicateRegistrationException();
-        }
-        if (request.recordType() == RecordType.SC && !request.details().birthDate().isSeniorOn(today())) {
+        Citizen citizen = citizens.findByAccountId(accountId).orElse(null);
+        // A returning citizen is judged on the birth date already on file, not on a new one in the request.
+        BirthDate birthDate = citizen != null ? citizen.birthDate() : request.details().birthDate();
+        if (request.recordType() == RecordType.SC && !birthDate.isSeniorOn(today())) {
             throw new NotEligibleException(
                     "Applicant must be at least " + BirthDate.SENIOR_AGE + " years old for a Senior Citizen ID");
         }
 
         Instant now = clock.instant();
-        SeniorCitizen citizen = citizens.save(new SeniorCitizen(account, request.details(), request.idHmac(), now));
-        Registration registration = registrations.save(
-                Registration.submit(citizen, request.recordType(), request.lguCode(), now));
+        if (citizen == null) {
+            // First registration for this account: the government ID must not belong to anyone else.
+            if (citizens.existsByIdHmac(request.idHmac())) {
+                throw new DuplicateRegistrationException();
+            }
+            citizen = citizens.save(new Citizen(account, request.details(), request.idHmac(), now));
+        } else if (!citizen.idHmac().equals(request.idHmac())) {
+            // Later registrations (e.g. PWD after SC) must be for the same person.
+            throw new DuplicateRegistrationException();
+        }
+        if (registrations.existsByCitizenIdAndRecordTypeAndStatusIn(
+                citizen.id(), request.recordType(), OPEN_STATUSES)) {
+            throw new DuplicateRegistrationException();
+        }
+
+        Registration registration = registrations.save(Registration.submit(
+                citizen, request.recordType(), request.disabilityClassification(), request.lguCode(), now));
         audit.record(accountId, AuditAction.REGISTRATION_SUBMITTED, registration.id(), null);
         return registration;
     }
@@ -122,6 +143,11 @@ public class RegistrationService {
     @Transactional(readOnly = true)
     public Optional<Registration> findLatestForAccount(UUID accountId) {
         return registrations.findFirstByCitizenAccountIdOrderBySubmittedAtDesc(accountId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Registration> findAllForAccount(UUID accountId) {
+        return registrations.findByCitizenAccountIdOrderBySubmittedAtDesc(accountId);
     }
 
     @Transactional(readOnly = true)

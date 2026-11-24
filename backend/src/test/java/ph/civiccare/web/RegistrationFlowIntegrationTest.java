@@ -138,6 +138,44 @@ class RegistrationFlowIntegrationTest {
     }
 
     @Test
+    void youngPwdCanRegisterAndSeniorCanAlsoAddPwd() throws Exception {
+        String govId = randomGovId();
+        String token = signUpAndLogin();
+
+        // PWD has no age minimum, and the classification is returned to the registrant
+        mvc.perform(withToken(post("/api/v1/registrations"), token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(pwdJson("1995-04-01", govId, "VISUAL")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.recordType").value("PWD"))
+                .andExpect(jsonPath("$.disabilityClassification").value("VISUAL"));
+
+        // Same person, same account, can also hold a Senior ID if old enough; a younger one is not eligible
+        mvc.perform(withToken(post("/api/v1/registrations"), token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(registrationJson("1995-04-01", govId)))
+                .andExpect(status().isBadRequest());
+
+        // A second open PWD registration for the same person is a conflict
+        mvc.perform(withToken(post("/api/v1/registrations"), token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(pwdJson("1995-04-01", govId, "VISUAL")))
+                .andExpect(status().isConflict());
+
+        mvc.perform(withToken(get("/api/v1/me/registrations"), token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test
+    void pwdWithoutClassificationIsRejected() throws Exception {
+        mvc.perform(withToken(post("/api/v1/registrations"), signUpAndLogin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(pwdJson("1995-04-01", randomGovId(), null)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void seniorCitizenCannotSeeReviewQueue() throws Exception {
         mvc.perform(withToken(get("/api/v1/registrations"), signUpAndLogin()))
                 .andExpect(status().isForbidden());
@@ -217,9 +255,17 @@ class RegistrationFlowIntegrationTest {
 
     private static String registrationJson(String birthDate, String govId) {
         return """
-                {"fullName":"Test Sample Person","birthDate":"%s","address":"1 Test St, Quezon City",
-                 "contactNumber":"09170000000","govIdNumber":"%s","lguCode":"QC-OSCA"}
+                {"recordType":"SC","fullName":"Test Sample Person","birthDate":"%s",
+                 "address":"1 Test St, Quezon City","contactNumber":"09170000000",
+                 "govIdNumber":"%s","lguCode":"QC-OSCA"}
                 """.formatted(birthDate, govId);
+    }
+
+    private static String pwdJson(String birthDate, String govId, String classification) {
+        return """
+                {"recordType":"PWD","disabilityClassification":%s,"fullName":"Test Sample Person",
+                 "birthDate":"%s","address":"1 Test St, Quezon City","govIdNumber":"%s","lguCode":"QC-OSCA"}
+                """.formatted(classification == null ? "null" : "\"" + classification + "\"", birthDate, govId);
     }
 
     /** Synthetic ID number, unique per test so tests do not collide in the shared database. */

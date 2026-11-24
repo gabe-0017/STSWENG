@@ -7,7 +7,7 @@ databaseChangeLog:
         - sql:
             sql: |
               ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-              ALTER TABLE senior_citizens ENABLE ROW LEVEL SECURITY;
+              ALTER TABLE citizens ENABLE ROW LEVEL SECURITY;
               ALTER TABLE registrations ENABLE ROW LEVEL SECURITY;
               ALTER TABLE id_cards ENABLE ROW LEVEL SECURITY;
               ALTER TABLE chain_outbox ENABLE ROW LEVEL SECURITY;

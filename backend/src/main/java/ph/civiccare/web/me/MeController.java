@@ -1,5 +1,6 @@
 package ph.civiccare.web.me;
 
+import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -34,12 +35,19 @@ public class MeController {
         return AccountResponse.from(authService.get(CurrentUser.id(jwt)));
     }
 
-    /** The senior citizen's own registration and its status. 404 if they have not registered yet. */
+    /** The citizen's most recent registration and its status. 404 if they have not registered yet. */
     @GetMapping("/registration")
-    @PreAuthorize("hasRole('SENIOR_CITIZEN')")
+    @PreAuthorize("hasRole('CITIZEN')")
     RegistrationDetail myRegistration(@AuthenticationPrincipal Jwt jwt) {
         return registrations.findLatestForAccount(CurrentUser.id(jwt))
                 .map(views::detail)
                 .orElseThrow(() -> new NotFoundException("No registration yet"));
+    }
+
+    /** All of the citizen's registrations (Senior Citizen and/or PWD), newest first. Empty if none. */
+    @GetMapping("/registrations")
+    @PreAuthorize("hasRole('CITIZEN')")
+    List<RegistrationDetail> myRegistrations(@AuthenticationPrincipal Jwt jwt) {
+        return registrations.findAllForAccount(CurrentUser.id(jwt)).stream().map(views::detail).toList();
     }
 }

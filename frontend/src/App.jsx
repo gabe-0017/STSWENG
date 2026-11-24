@@ -59,7 +59,9 @@ const roles = [
 ];
 
 const ROLE_MAP = {
-  SENIOR_CITIZEN: "senior",
+  // One CITIZEN role covers both Senior Citizen and PWD registrants. The dashboard view
+  // (senior vs PWD) will later be chosen from the registration type, not from the role.
+  CITIZEN: "senior",
   LGU_STAFF: "lgu",
   ESTABLISHMENT: "establishment",
   GOV_ADMIN: "government",

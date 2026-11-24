@@ -13,6 +13,7 @@ import ph.civiccare.domain.account.Role;
 import ph.civiccare.domain.account.UserAccount;
 import ph.civiccare.domain.account.UserAccountRepository;
 import ph.civiccare.domain.registration.BirthDate;
+import ph.civiccare.domain.registration.DisabilityClassification;
 import ph.civiccare.domain.registration.GovIdNumber;
 import ph.civiccare.domain.registration.NewRegistration;
 import ph.civiccare.domain.registration.PersonalDetails;
@@ -70,7 +71,7 @@ public class DemoDataSeeder implements ApplicationRunner {
         authService.createAccount(ESTABLISHMENT_EMAIL, password, "Demo Botika Pharmacy", Role.ESTABLISHMENT);
         authService.createAccount(ADMIN_EMAIL, password, "Demo NCSC Admin", Role.GOV_ADMIN);
         // No registration yet, so it can be used to register live during a demo
-        authService.createAccount(SENIOR_EMAIL, password, "Demo Senior Citizen", Role.SENIOR_CITIZEN);
+        authService.createAccount(SENIOR_EMAIL, password, "Demo Citizen", Role.CITIZEN);
 
         seedPendingRegistration("sample1@civiccare.test", password, "Lorenzo Sample Reyes",
                 LocalDate.of(1955, 3, 14), "12 Sampaguita St, Quezon City", "DEMO-0000-0001");
@@ -79,15 +80,25 @@ public class DemoDataSeeder implements ApplicationRunner {
         seedPendingRegistration("sample3@civiccare.test", password, "Ramon Sample Santos",
                 LocalDate.of(1960, 7, 21), "8 Mabini Rd, Quezon City", "DEMO-0000-0003");
 
-        log.info("Seeded demo accounts ({}, {}, {}, {}) and 3 pending registrations",
+        seedPendingRegistration("sample4@civiccare.test", password, "Andrea Sample Dizon",
+                LocalDate.of(1992, 9, 5), "3 Rizal St, Quezon City", "DEMO-0000-0004",
+                RecordType.PWD, DisabilityClassification.VISUAL);
+
+        log.info("Seeded demo accounts ({}, {}, {}, {}) and 4 pending registrations",
                 LGU_EMAIL, ESTABLISHMENT_EMAIL, ADMIN_EMAIL, SENIOR_EMAIL);
     }
 
     private void seedPendingRegistration(String email, String password, String name, LocalDate birthDate,
                                          String address, String govId) {
-        UserAccount account = authService.createAccount(email, password, name, Role.SENIOR_CITIZEN);
+        seedPendingRegistration(email, password, name, birthDate, address, govId, RecordType.SC, null);
+    }
+
+    private void seedPendingRegistration(String email, String password, String name, LocalDate birthDate,
+                                         String address, String govId, RecordType type,
+                                         DisabilityClassification classification) {
+        UserAccount account = authService.createAccount(email, password, name, Role.CITIZEN);
         PersonalDetails details = new PersonalDetails(name, new BirthDate(birthDate), address, null);
         registrationService.submit(account.id(), new NewRegistration(
-                details, hmacService.fingerprint(GovIdNumber.of(govId)), RecordType.SC, DEMO_LGU_CODE));
+                details, hmacService.fingerprint(GovIdNumber.of(govId)), type, classification, DEMO_LGU_CODE));
     }
 }

@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -33,7 +34,7 @@ class RegistrationServiceTest {
     private static final IdHmac HMAC = new IdHmac("b".repeat(64));
 
     private final UserAccountRepository accounts = mock(UserAccountRepository.class);
-    private final SeniorCitizenRepository citizens = mock(SeniorCitizenRepository.class);
+    private final CitizenRepository citizens = mock(CitizenRepository.class);
     private final RegistrationRepository registrations = mock(RegistrationRepository.class);
     private final IdCardRepository idCards = mock(IdCardRepository.class);
     private final LedgerService ledger = mock(LedgerService.class);
@@ -45,7 +46,7 @@ class RegistrationServiceTest {
     void setUp() {
         service = new RegistrationService(accounts, citizens, registrations, idCards, ledger, audit,
                 Clock.fixed(NOW, ZoneOffset.UTC), 5);
-        account = new UserAccount("senior@civiccare.test", "hash", "Test Senior", Role.SENIOR_CITIZEN, NOW);
+        account = new UserAccount("senior@civiccare.test", "hash", "Test Senior", Role.CITIZEN, NOW);
         when(accounts.findById(account.id())).thenReturn(Optional.of(account));
         when(citizens.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(registrations.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -54,7 +55,63 @@ class RegistrationServiceTest {
 
     private static NewRegistration request(LocalDate birthDate) {
         return new NewRegistration(new PersonalDetails("Test Senior", new BirthDate(birthDate), "1 Test St", null),
-                HMAC, RecordType.SC, "QC-OSCA");
+                HMAC, RecordType.SC, null, "QC-OSCA");
+    }
+
+    private static NewRegistration pwdRequest() {
+        return new NewRegistration(new PersonalDetails("Test Senior", new BirthDate(LocalDate.of(1992, 1, 1)),
+                "1 Test St", null), HMAC, RecordType.PWD, DisabilityClassification.VISUAL, "QC-OSCA");
+    }
+
+    @Test
+    void pwdRequiresClassification() {
+        assertThatThrownBy(() -> new NewRegistration(request(LocalDate.of(1992, 1, 1)).details(), HMAC,
+                RecordType.PWD, null, "QC-OSCA")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new NewRegistration(request(LocalDate.of(1950, 1, 1)).details(), HMAC,
+                RecordType.SC, DisabilityClassification.VISUAL, "QC-OSCA"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void pwdHasNoMinimumAge() {
+        Registration registration = service.submit(account.id(), pwdRequest());
+
+        assertThat(registration.recordType()).isEqualTo(RecordType.PWD);
+        assertThat(registration.disabilityClassification()).isEqualTo(DisabilityClassification.VISUAL);
+    }
+
+    @Test
+    void existingCitizenCanAddSecondTypeWithSameId() {
+        Registration sc = service.submit(account.id(), request(LocalDate.of(1950, 5, 5)));
+        Citizen existing = sc.citizen();
+        when(citizens.findByAccountId(account.id())).thenReturn(Optional.of(existing));
+
+        Registration pwd = service.submit(account.id(), pwdRequest());
+
+        assertThat(pwd.citizen()).isSameAs(existing);
+        verify(citizens, times(1)).save(any(Citizen.class));
+    }
+
+    @Test
+    void secondOpenRegistrationOfSameTypeIsDuplicate() {
+        Registration sc = service.submit(account.id(), request(LocalDate.of(1950, 5, 5)));
+        when(citizens.findByAccountId(account.id())).thenReturn(Optional.of(sc.citizen()));
+        when(registrations.existsByCitizenIdAndRecordTypeAndStatusIn(
+                eq(sc.citizen().id()), eq(RecordType.SC), any())).thenReturn(true);
+
+        assertThatThrownBy(() -> service.submit(account.id(), request(LocalDate.of(1950, 5, 5))))
+                .isInstanceOf(DuplicateRegistrationException.class);
+    }
+
+    @Test
+    void returningCitizenCannotSwitchToAnotherIdNumber() {
+        Registration sc = service.submit(account.id(), request(LocalDate.of(1950, 5, 5)));
+        when(citizens.findByAccountId(account.id())).thenReturn(Optional.of(sc.citizen()));
+        NewRegistration otherId = new NewRegistration(pwdRequest().details(), new IdHmac("c".repeat(64)),
+                RecordType.PWD, DisabilityClassification.VISUAL, "QC-OSCA");
+
+        assertThatThrownBy(() -> service.submit(account.id(), otherId))
+                .isInstanceOf(DuplicateRegistrationException.class);
     }
 
     @Test
@@ -62,7 +119,7 @@ class RegistrationServiceTest {
         Registration registration = service.submit(account.id(), request(LocalDate.of(1950, 5, 5)));
 
         assertThat(registration.status()).isEqualTo(RegistrationStatus.SUBMITTED);
-        verify(citizens).save(any(SeniorCitizen.class));
+        verify(citizens).save(any(Citizen.class));
         verify(audit).record(eq(account.id()), eq(AuditAction.REGISTRATION_SUBMITTED), eq(registration.id()), isNull());
     }
 

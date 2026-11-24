@@ -17,9 +17,15 @@ public class RegistrationViews {
         this.registrations = registrations;
     }
 
+    /** Full view, for the registrant and LGU staff. */
     public RegistrationDetail detail(Registration r) {
+        return detail(r, true);
+    }
+
+    /** includeSensitive false hides the disability classification (government admin view). */
+    public RegistrationDetail detail(Registration r, boolean includeSensitive) {
         return new RegistrationDetail(
-                r.id(), r.recordType(), r.status(), r.lguCode(), r.submittedAt(), r.reviewedAt(), r.reason(),
+                r.id(), r.recordType(), includeSensitive ? r.disabilityClassification() : null, r.status(), r.lguCode(), r.submittedAt(), r.reviewedAt(), r.reason(),
                 Applicant.from(r.citizen()),
                 registrations.idCardFor(r.id()).map(IdCardInfo::from).orElse(null),
                 registrations.ledgerStatus(r.id()).orElse(null));

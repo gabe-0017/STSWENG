@@ -1,22 +1,22 @@
 databaseChangeLog:
   - changeSet:
-      id: 002-create-senior-citizens
+      id: 002-create-citizens
       author: group05
       changes:
         - createTable:
-            tableName: senior_citizens
+            tableName: citizens
             columns:
               - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
               - column:
                   name: user_id
                   type: uuid
-                  constraints: { nullable: false, unique: true, uniqueConstraintName: uq_senior_citizens_user, foreignKeyName: fk_senior_citizens_user, references: users(id) }
+                  constraints: { nullable: false, unique: true, uniqueConstraintName: uq_citizens_user, foreignKeyName: fk_citizens_user, references: users(id) }
               - column: { name: full_name, type: varchar(200), constraints: { nullable: false } }
               - column: { name: birth_date, type: date, constraints: { nullable: false } }
               - column: { name: address, type: varchar(500), constraints: { nullable: false } }
               - column: { name: contact_number, type: varchar(30) }
               # HMAC-SHA256 of the normalized government ID number, hex encoded (never the raw number)
-              - column: { name: id_hmac, type: varchar(64), constraints: { nullable: false, unique: true, uniqueConstraintName: uq_senior_citizens_id_hmac } }
+              - column: { name: id_hmac, type: varchar(64), constraints: { nullable: false, unique: true, uniqueConstraintName: uq_citizens_id_hmac } }
               - column: { name: created_at, type: timestamp with time zone, constraints: { nullable: false } }
               - column: { name: version, type: bigint, constraints: { nullable: false } }
 
@@ -31,9 +31,11 @@ databaseChangeLog:
               - column:
                   name: citizen_id
                   type: uuid
-                  constraints: { nullable: false, foreignKeyName: fk_registrations_citizen, references: senior_citizens(id) }
+                  constraints: { nullable: false, foreignKeyName: fk_registrations_citizen, references: citizens(id) }
               - column: { name: record_type, type: varchar(10), constraints: { nullable: false } }
               - column: { name: status, type: varchar(20), constraints: { nullable: false } }
+              # PWD only: sensitive, shown to the registrant and LGU staff, never on-chain
+              - column: { name: disability_classification, type: varchar(30) }
               - column: { name: lgu_code, type: varchar(20), constraints: { nullable: false } }
               - column: { name: submitted_at, type: timestamp with time zone, constraints: { nullable: false } }
               - column: { name: reviewed_at, type: timestamp with time zone }
@@ -71,3 +73,19 @@ databaseChangeLog:
               - column: { name: issued_at, type: timestamp with time zone, constraints: { nullable: false } }
               - column: { name: valid_until, type: date, constraints: { nullable: false } }
               - column: { name: version, type: bigint, constraints: { nullable: false } }
+
+  - changeSet:
+      id: 002-registration-rules
+      author: group05
+      changes:
+        # PWD registrations must have a classification; other types must not
+        - sql:
+            sql: >
+              ALTER TABLE registrations ADD CONSTRAINT ck_registrations_pwd_classification
+              CHECK ((record_type = 'PWD' AND disability_classification IS NOT NULL)
+                  OR (record_type <> 'PWD' AND disability_classification IS NULL))
+        # One open registration per type per person. Rejected or revoked ones do not block reapplying.
+        - sql:
+            sql: >
+              CREATE UNIQUE INDEX uq_registrations_open_per_type ON registrations (citizen_id, record_type)
+              WHERE status IN ('SUBMITTED', 'APPROVED', 'AMENDED')

@@ -50,8 +50,8 @@ public class AuthService {
     }
 
     @Transactional
-    public UserAccount signUpSeniorCitizen(String email, String password, String fullName) {
-        return createAccount(email, password, fullName, Role.SENIOR_CITIZEN);
+    public UserAccount signUpCitizen(String email, String password, String fullName) {
+        return createAccount(email, password, fullName, Role.CITIZEN);
     }
 
     /** Used by admins and the demo seeder. */

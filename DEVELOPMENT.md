@@ -20,7 +20,7 @@ The `dev` profile seeds **synthetic** demo accounts (password `Demo1234!`):
 | Email | Role |
 |---|---|
 | `lgu@civiccare.test` | LGU_STAFF (3 sample registrations waiting in the queue) |
-| `senior@civiccare.test` | SENIOR_CITIZEN (not registered yet; use it to register live) |
+| `senior@civiccare.test` | CITIZEN (not registered yet; use it to register live, as SC or PWD) |
 | `establishment@civiccare.test` | ESTABLISHMENT |
 | `admin@civiccare.test` | GOV_ADMIN |
 
@@ -66,13 +66,14 @@ curl -s "$B/registrations?status=SUBMITTED" -H "Authorization: Bearer $TOKEN"
 
 | Method & path | Role | Notes |
 |---|---|---|
-| `POST /api/v1/auth/signup` | public | Senior citizen self sign-up `{email, password, fullName}` |
+| `POST /api/v1/auth/signup` | public | Citizen self sign-up `{email, password, fullName}` |
 | `POST /api/v1/auth/login` | public | Returns `{accessToken, expiresAt, role}` |
 | `GET /api/v1/me` | any | Own account |
-| `GET /api/v1/me/registration` | SC | Own registration, ID card and ledger status (404 if none) |
-| `POST /api/v1/registrations` | SC | `{fullName, birthDate, address, contactNumber?, govIdNumber, lguCode}` |
+| `GET /api/v1/me/registration` | CITIZEN | Latest own registration, ID card and ledger status (404 if none) |
+| `GET /api/v1/me/registrations` | CITIZEN | All own registrations (SC and/or PWD), newest first |
+| `POST /api/v1/registrations` | CITIZEN | `{recordType: "SC"\|"PWD", disabilityClassification (PWD only), fullName, birthDate, address, contactNumber?, govIdNumber, lguCode}` |
 | `GET /api/v1/registrations?status=&page=&size=` | LGU, GOV | Paginated queue, oldest first |
-| `GET /api/v1/registrations/{id}` | LGU, GOV | Details |
+| `GET /api/v1/registrations/{id}` | LGU, GOV | Details (disability classification hidden from GOV) |
 | `POST /api/v1/registrations/{id}/approve` | LGU | Issues ID card, queues chain write (`ledgerStatus: PENDING`) |
 | `POST /api/v1/registrations/{id}/reject` | LGU | `{reason}` |
 | `POST /api/v1/registrations/{id}/revoke` | LGU, GOV | `{reason}`, queues chain write |
