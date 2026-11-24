@@ -96,7 +96,7 @@ Inside `backend/`:
 ```
 src/main/java/ph/civiccare/
   domain/            # INSIDE: entities, value objects, repositories, domain services
-    registration/    SeniorCitizen, Registration, RegistrationStatus, BirthDate(VO), IdHmac(VO)
+    registration/    Citizen, Registration, RegistrationStatus, BirthDate(VO), IdHmac(VO)
     verification/    VerificationToken(VO), EligibilityResult(VO)
     discount/        Establishment, DiscountRecord, Money(VO)
     claims/          TaxReliefClaim, ClaimStatus
