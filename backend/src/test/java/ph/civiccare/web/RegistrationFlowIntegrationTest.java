@@ -218,6 +218,12 @@ class RegistrationFlowIntegrationTest {
     }
 
     @Test
+    void headRequestsToFrontendAreNotBehindLogin() throws Exception {
+        // UptimeRobot's monitors send HEAD, not GET
+        assertThat(mvc.perform(head("/")).andReturn().getResponse().getStatus()).isNotEqualTo(401);
+    }
+
+    @Test
     void otherPathsStillNeedLogin() throws Exception {
         mvc.perform(get("/internal/anything")).andExpect(status().isUnauthorized());
     }
