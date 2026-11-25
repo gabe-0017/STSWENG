@@ -19,8 +19,11 @@ The `dev` profile seeds **synthetic** demo accounts (password `Demo1234!`):
 
 | Email | Role |
 |---|---|
-| `lgu@civiccare.test` | LGU_STAFF (3 sample registrations waiting in the queue) |
-| `senior@civiccare.test` | CITIZEN (not registered yet; use it to register live, as SC or PWD) |
+| `lgu@civiccare.test` | LGU_STAFF (2 pending registrations waiting in the queue) |
+| `approved-senior@civiccare.test` | CITIZEN with an approved Senior Citizen ID |
+| `approved-pwd@civiccare.test` | CITIZEN with an approved PWD ID |
+| `pending-senior@civiccare.test` | CITIZEN with a Senior Citizen registration awaiting review |
+| `pending-pwd@civiccare.test` | CITIZEN with a PWD registration awaiting review |
 | `establishment@civiccare.test` | ESTABLISHMENT |
 | `admin@civiccare.test` | GOV_ADMIN |
 
