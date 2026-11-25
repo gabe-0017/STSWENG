@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   BadgeCheck,
@@ -71,8 +71,64 @@ const ROLE_MAP = {
    App shell
    ========================================================================== */
 
+/* Pages live in the URL hash (#/login, #/register, #/dashboard) so the browser's
+   Back and Forward buttons work. The server never sees the hash, so no server
+   routing is needed. */
+const PAGES = ["home", "login", "register", "dashboard"];
+
+function pageFromHash() {
+  const name = window.location.hash.replace(/^#\/?/, "");
+  return PAGES.includes(name) ? name : "home";
+}
+
 function App() {
-  const [page, setPage] = useState("home");
+  const [routePage, setRoutePage] = useState(pageFromHash);
+  // The dashboard needs a login: without a session, show the login page instead.
+  const page = routePage === "dashboard" && !getSession() ? "login" : routePage;
+  const pendingSection = useRef(null);
+
+  function setPage(next) {
+    const hash = next === "home" ? "#/" : `#/${next}`;
+    if (window.location.hash === hash || (next === "home" && !window.location.hash)) {
+      setRoutePage(next);
+    } else {
+      window.location.hash = hash;
+    }
+  }
+
+  useEffect(() => {
+    const onHashChange = () => setRoutePage(pageFromHash());
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+
+  // Every page change starts at the top, unless a section link asked for a section.
+  useEffect(() => {
+    const section = pendingSection.current;
+    pendingSection.current = null;
+    if (section) {
+      document.getElementById(section)?.scrollIntoView();
+    } else {
+      window.scrollTo(0, 0);
+    }
+  }, [page]);
+
+  function goHome() {
+    setMobileMenu(false);
+    if (page === "home") window.scrollTo({ top: 0, behavior: "smooth" });
+    else setPage("home");
+  }
+
+  function goSection(id) {
+    setMobileMenu(false);
+    if (page === "home") {
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      pendingSection.current = id;
+      setPage("home");
+    }
+  }
+
   const [role, setRole] = useState(() => ROLE_MAP[getSession()?.role] ?? "senior");
   const [mobileMenu, setMobileMenu] = useState(false);
   const [notice, setNotice] = useState("");
@@ -108,7 +164,7 @@ function App() {
       <header className="topbar">
         <button
           className="brand"
-          onClick={() => setPage("home")}
+          onClick={goHome}
           aria-label="CivicCareID home"
         >
           <span className="brand-mark logo-text">CC</span>
@@ -127,29 +183,42 @@ function App() {
         </button>
 
         <nav className={mobileMenu ? "nav-links open" : "nav-links"}>
-          <button onClick={() => setPage("home")}>Home</button>
-          <a href="#how-it-works" onClick={() => setMobileMenu(false)}>
-            How it works
-          </a>
-          <a href="#about" onClick={() => setMobileMenu(false)}>
-            About
-          </a>
-          <button className="nav-login" onClick={() => openLogin()}>
+          <button onClick={goHome}>Home</button>
+          <button onClick={() => goSection("how-it-works")}>How it works</button>
+          <button onClick={() => goSection("about")}>About</button>
+          <button
+            className="nav-signup"
+            onClick={() => { setMobileMenu(false); setPage("register"); }}
+          >
+            Sign up
+          </button>
+          <button
+            className="nav-login"
+            onClick={() => { setMobileMenu(false); openLogin(); }}
+          >
             Log in <ArrowRight size={16} />
           </button>
         </nav>
       </header>
 
-      {page === "home" && <HomePage openLogin={openLogin} />}
+      {page === "home" && (
+        <HomePage openLogin={openLogin} setPage={setPage} goSection={goSection} />
+      )}
       {page === "login" && (
         <LoginPage
-          role={role}
-          setRole={setRole}
           handleLogin={handleLogin}
           setPage={setPage}
         />
       )}
-      {page === "register" && <RegisterPage setPage={setPage} />}
+      {page === "register" && (
+        <RegisterPage
+          setPage={setPage}
+          onRegistered={(type) => {
+            setRole(type);
+            setPage("dashboard");
+          }}
+        />
+      )}
       {page === "dashboard" && (
         <Dashboard
           role={role}
@@ -166,7 +235,7 @@ function App() {
           <strong>CivicCareID PH</strong>
         </div>
         
-        <span>@ Group 019</span>
+        <span>© 2026 CivicCareID PH · Group 019 · Academic prototype, all data is synthetic</span>
       </footer>
     </div>
   );
@@ -176,7 +245,42 @@ function App() {
    Home page
    ========================================================================== */
 
-function HomePage({ openLogin }) {
+const portals = [
+  {
+    key: "citizen",
+    icon: Users,
+    title: "Senior Citizens & PWD",
+    text: "Apply for your Senior Citizen or PWD ID and keep your digital ID with you.",
+    link: "Register or log in",
+    target: "register",
+  },
+  {
+    key: "lgu",
+    icon: Building2,
+    title: "LGU / OSCA Staff",
+    text: "Review, approve or reject Senior Citizen and PWD applications.",
+    link: "Staff log in",
+    target: "login",
+  },
+  {
+    key: "establishment",
+    icon: Store,
+    title: "Establishments",
+    text: "Check that an ID is valid and record the discounts you give.",
+    link: "Establishment log in",
+    target: "login",
+  },
+  {
+    key: "government",
+    icon: ShieldCheck,
+    title: "Government Agencies",
+    text: "Oversee the registry and review tax relief claims.",
+    link: "Agency log in",
+    target: "login",
+  },
+];
+
+function HomePage({ openLogin, setPage, goSection }) {
   return (
     <main>
       {/* Hero */}
@@ -201,15 +305,12 @@ function HomePage({ openLogin }) {
           </p>
 
           <div className="hero-actions">
-            <button
-              className="button primary"
-              onClick={() => openLogin("senior")}
-            >
-              Access your account <ArrowRight size={17} />
+            <button className="button primary" onClick={() => setPage("register")}>
+              Register now <ArrowRight size={17} />
             </button>
-            <a className="button secondary" href="#how-it-works">
-              Explore how it works
-            </a>
+            <button className="button secondary" onClick={() => openLogin()}>
+              Log in
+            </button>
           </div>
 
           <div className="hero-trust">
@@ -237,7 +338,7 @@ function HomePage({ openLogin }) {
               </div>
               <div className="id-details">
                 <small>SAMPLE CARDHOLDER</small>
-                <b>Alysse Angelie Dela Cruz</b>
+                <b>Juan Dela Cruz</b>
                 <span>Senior Citizen ID</span>
                 <strong>SC-0000-0001</strong>
               </div>
@@ -269,20 +370,20 @@ function HomePage({ openLogin }) {
       {/* Stats strip */}
       <section className="stats-strip">
         <div>
-          <strong>One</strong>
-          <span>unified registry concept</span>
+          <strong>SC + PWD</strong>
+          <span>one registry for both ID types</span>
         </div>
         <div>
-          <strong>Four</strong>
-          <span>user access portals</span>
+          <strong>1 ID</strong>
+          <span>same format nationwide</span>
         </div>
         <div>
           <strong>QR</strong>
-          <span>based ID verification</span>
+          <span>quick checks at the counter</span>
         </div>
         <div>
-          <strong>Secure</strong>
-          <span>by design approach</span>
+          <strong>Private</strong>
+          <span>shops only see what they need</span>
         </div>
       </section>
 
@@ -330,23 +431,23 @@ function HomePage({ openLogin }) {
         <div className="section-heading left">
           <span className="eyebrow">ONE PLATFORM, DIFFERENT PORTALS</span>
           <h2>Designed for every participant.</h2>
-          <p>Each user sees the tools relevant to their role.</p>
+          <p>Everyone sees only the tools that belong to their role.</p>
         </div>
 
         <div className="portal-grid">
-          {roles.map((item) => (
+          {portals.map((item) => (
             <button
               className="portal-card"
-              key={item.id}
-              onClick={() => openLogin(item.id)}
+              key={item.key}
+              onClick={() => setPage(item.target)}
             >
               <span className="portal-icon">
                 <item.icon size={22} />
               </span>
-              <b>{item.label}</b>
-              <p>{item.description}</p>
+              <b>{item.title}</b>
+              <p>{item.text}</p>
               <span className="portal-link">
-                Continue <ArrowRight size={15} />
+                {item.link} <ArrowRight size={15} />
               </span>
             </button>
           ))}
@@ -356,17 +457,22 @@ function HomePage({ openLogin }) {
       {/* Call to action */}
       <section className="cta">
         <div>
-          <span className="eyebrow light">CIVICCAREID PH</span>
+          <span className="eyebrow light">GET STARTED</span>
           <h2>
-            Making verification clearer,
+            Register once.
             <br />
-            safer, and more accessible.
+            Use your ID anywhere.
           </h2>
-          <p>Explore the prototype using a sample account.</p>
+          <p>Create an account to apply, or log in to continue.</p>
         </div>
-        <button className="button white" onClick={() => openLogin()}>
-          Explore the demo <ArrowRight size={17} />
-        </button>
+        <div className="cta-actions">
+          <button className="button white" onClick={() => setPage("register")}>
+            Register now <ArrowRight size={17} />
+          </button>
+          <button className="button outline-light" onClick={() => openLogin()}>
+            Log in
+          </button>
+        </div>
       </section>
     </main>
   );
@@ -389,7 +495,7 @@ function Step({ number, icon: Icon, title, text }) {
    Login page
    ========================================================================== */
 
-function LoginPage({ role, setRole, handleLogin, setPage }) {
+function LoginPage({ handleLogin, setPage }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [formError, setFormError] = useState("");
@@ -418,8 +524,8 @@ function LoginPage({ role, setRole, handleLogin, setPage }) {
             community.
           </h1>
           <p>
-            Access the services and tools designed for your role in the senior
-            citizen verification process.
+            Log in to manage your registration, review applications or verify
+            IDs. You will see the tools that match your account.
           </p>
           <div className="auth-points">
             <span>
@@ -436,31 +542,14 @@ function LoginPage({ role, setRole, handleLogin, setPage }) {
       </div>
 
       <div className="auth-main">
-        <div className="auth-form">
-          <button className="back-link" onClick={() => setPage("home")}>
+        <form className="auth-form" onSubmit={(e) => { e.preventDefault(); submit(); }}>
+          <button type="button" className="back-link" onClick={() => setPage("home")}>
             ← Back to home
           </button>
 
           <span className="eyebrow">ACCOUNT ACCESS</span>
           <h2>Log in to your portal</h2>
-          <p className="muted">Choose your account type to continue.</p>
-
-          <label className="field-label">I am logging in as</label>
-          <div className="role-options">
-            {roles.map((item) => (
-              <button
-                key={item.id}
-                className={
-                  role === item.id ? "role-option selected" : "role-option"
-                }
-                onClick={() => setRole(item.id)}
-              >
-                <item.icon size={19} />
-                <span>{item.label}</span>
-                {role === item.id && <CheckCircle2 size={17} />}
-              </button>
-            ))}
-          </div>
+          <p className="muted">Enter your email and password to continue.</p>
 
           <label className="field-label" htmlFor="email">
             Email address
@@ -468,6 +557,8 @@ function LoginPage({ role, setRole, handleLogin, setPage }) {
           <input
             id="email"
             type="email"
+            required
+            autoComplete="email"
             placeholder="name@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -479,6 +570,8 @@ function LoginPage({ role, setRole, handleLogin, setPage }) {
           <input
             id="password"
             type="password"
+            required
+            autoComplete="current-password"
             placeholder="Enter your password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -490,7 +583,7 @@ function LoginPage({ role, setRole, handleLogin, setPage }) {
 
           <button
             className="button primary full"
-            onClick={submit}
+            type="submit"
             disabled={loading}
           >
             {loading ? "Logging in… (the server may be waking up)" : "Log in"}{" "}
@@ -500,11 +593,11 @@ function LoginPage({ role, setRole, handleLogin, setPage }) {
 
           <div className="auth-bottom">
             Don't have an account?{" "}
-            <button onClick={() => setPage("register")}>
-              Start registration
+            <button type="button" onClick={() => setPage("register")}>
+              Sign up
             </button>
           </div>
-        </div>
+        </form>
       </div>
     </main>
   );
@@ -515,13 +608,92 @@ function LoginPage({ role, setRole, handleLogin, setPage }) {
    ========================================================================== */
 
 
-function RegisterPage({ setPage }) {
-  const [submitted, setSubmitted] = useState(false);
-  const [registrationType, setRegistrationType] = useState("senior");
+const CLASSIFICATIONS = [
+  ["DEAF_OR_HARD_OF_HEARING", "Deaf or Hard of Hearing"],
+  ["INTELLECTUAL", "Intellectual Disability"],
+  ["LEARNING", "Learning Disability"],
+  ["MENTAL", "Mental Disability"],
+  ["PHYSICAL", "Physical Disability"],
+  ["PSYCHOSOCIAL", "Psychosocial Disability"],
+  ["SPEECH_AND_LANGUAGE", "Speech and Language Impairment"],
+  ["VISUAL", "Visual Disability"],
+  ["CANCER", "Cancer"],
+  ["RARE_DISEASE", "Rare Disease"],
+];
 
-  function handleSubmit(e) {
+// Only the demo LGU exists for now. More offices can be added here later.
+const LGU_OPTIONS = [["QC-OSCA", "Quezon City OSCA (demo)"]];
+
+const EMPTY_FORM = {
+  fullName: "",
+  email: "",
+  password: "",
+  birthDate: "",
+  address: "",
+  contactNumber: "",
+  govIdNumber: "",
+  lguCode: LGU_OPTIONS[0][0],
+  classification: "",
+};
+
+function RegisterPage({ setPage, onRegistered }) {
+  const [registrationType, setRegistrationType] = useState("senior");
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [formError, setFormError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  // Once the account exists, a retry (e.g. after a validation error) skips sign-up.
+  const [accountReady, setAccountReady] = useState(false);
+  const [done, setDone] = useState(false);
+
+  function update(name) {
+    return (e) => setForm({ ...form, [name]: e.target.value });
+  }
+
+  async function handleSubmit(e) {
     e.preventDefault();
-    setSubmitted(true);
+    setFormError("");
+    setFieldErrors({});
+    setLoading(true);
+    try {
+      if (!accountReady) {
+        await api("/auth/signup", {
+          method: "POST", auth: false,
+          body: { email: form.email, password: form.password, fullName: form.fullName },
+        });
+        setAccountReady(true);
+        const session = await api("/auth/login", {
+          method: "POST", auth: false,
+          body: { email: form.email, password: form.password },
+        });
+        saveSession(session);
+      }
+
+      const isPwd = registrationType === "pwd";
+      await api("/registrations", {
+        method: "POST",
+        body: {
+          recordType: isPwd ? "PWD" : "SC",
+          disabilityClassification: isPwd ? form.classification : null,
+          fullName: form.fullName,
+          birthDate: form.birthDate,
+          address: form.address,
+          contactNumber: form.contactNumber || null,
+          govIdNumber: form.govIdNumber,
+          lguCode: form.lguCode,
+        },
+      });
+      setDone(true);
+    } catch (err) {
+      setFormError(err.message);
+      setFieldErrors(err.fieldErrors ?? {});
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function fieldError(name) {
+    return fieldErrors[name] ? <small className="field-error">{fieldErrors[name]}</small> : null;
   }
 
   return (
@@ -537,16 +709,19 @@ function RegisterPage({ setPage }) {
           Select your registration type and enter your information below.
         </p>
 
-        {submitted ? (
+        {done ? (
           <div className="success-panel">
             <CheckCircle2 size={36} />
-            <h3>Sample request submitted</h3>
+            <h3>Application submitted</h3>
             <p>
-              Your demo application is ready for review.
-              No information has been sent to a server.
+              Your account was created and your application is waiting for review
+              by your local office. You are now logged in.
             </p>
-            <button className="button primary" onClick={() => setPage("home")}>
-              Return home
+            <button
+              className="button primary"
+              onClick={() => onRegistered(registrationType)}
+            >
+              Go to my dashboard
             </button>
           </div>
         ) : (
@@ -556,11 +731,7 @@ function RegisterPage({ setPage }) {
             <div className="role-options">
               <button
                 type="button"
-                className={
-                  registrationType === "senior"
-                    ? "role-option selected"
-                    : "role-option"
-                }
+                className={registrationType === "senior" ? "role-option selected" : "role-option"}
                 onClick={() => setRegistrationType("senior")}
               >
                 <Users size={19} />
@@ -570,11 +741,7 @@ function RegisterPage({ setPage }) {
 
               <button
                 type="button"
-                className={
-                  registrationType === "pwd"
-                    ? "role-option selected"
-                    : "role-option"
-                }
+                className={registrationType === "pwd" ? "role-option selected" : "role-option"}
                 onClick={() => setRegistrationType("pwd")}
               >
                 <HeartHandshake size={19} />
@@ -584,85 +751,96 @@ function RegisterPage({ setPage }) {
             </div>
 
             <div className="form-grid">
-              <div>
-                <label className="field-label">First name</label>
-                <input required placeholder="e.g. Gabe" />
-              </div>
-
-              <div>
-                <label className="field-label">Last name</label>
-                <input required placeholder="e.g. De Vera" />
+              <div className="span-two">
+                <label className="field-label">Full name</label>
+                <input required value={form.fullName} onChange={update("fullName")}
+                  placeholder="e.g. Juan Santos Dela Cruz" />
+                {fieldError("fullName")}
               </div>
 
               <div>
                 <label className="field-label">Date of birth</label>
-                <input required type="date" />
+                <input required type="date" value={form.birthDate} onChange={update("birthDate")} />
+                {fieldError("birthDate")}
               </div>
 
               <div>
-                <label className="field-label">City / Municipality</label>
-                <input required placeholder="Muntinlupa" />
+                <label className="field-label">Government ID number</label>
+                <input required value={form.govIdNumber} onChange={update("govIdNumber")}
+                  placeholder="e.g. PhilSys or UMID number" />
+                {fieldError("govIdNumber")}
               </div>
 
               <div className="span-two">
-                <label className="field-label">Email address</label>
-                <input
-                  required
-                  type="email"
-                  placeholder="user@gmail.com"
-                />
+                <label className="field-label">Home address</label>
+                <input required value={form.address} onChange={update("address")}
+                  placeholder="House no., street, barangay, city" />
+                {fieldError("address")}
+              </div>
+
+              <div>
+                <label className="field-label">Contact number (optional)</label>
+                <input value={form.contactNumber} onChange={update("contactNumber")}
+                  placeholder="09XX XXX XXXX" />
+                {fieldError("contactNumber")}
+              </div>
+
+              <div>
+                <label className="field-label">Local office (LGU)</label>
+                <select required value={form.lguCode} onChange={update("lguCode")}>
+                  {LGU_OPTIONS.map(([code, label]) => (
+                    <option key={code} value={code}>{label}</option>
+                  ))}
+                </select>
+                {fieldError("lguCode")}
               </div>
 
               {registrationType === "pwd" && (
                 <div className="span-two">
-                  <label className="field-label">
-                    Disability classification
-                  </label>
-                  <select required defaultValue="">
-                    <option value="" disabled>
-                      Select classification
-                    </option>
-                    <option value="deaf-hard-of-hearing">
-                      Deaf or Hard of Hearing
-                    </option>
-                    <option value="intellectual">
-                      Intellectual Disability
-                    </option>
-                    <option value="learning">
-                      Learning Disability
-                    </option>
-                    <option value="mental">
-                      Mental Disability
-                    </option>
-                    <option value="physical">
-                      Physical Disability
-                    </option>
-                    <option value="psychosocial">
-                      Psychosocial Disability
-                    </option>
-                    <option value="speech">
-                      Speech and Language Impairment
-                    </option>
-                    <option value="visual">
-                      Visual Disability
-                    </option>
-                    <option value="cancer">
-                      Cancer
-                    </option>
-                    <option value="rare-disease">
-                      Rare Disease
-                    </option>
+                  <label className="field-label">Disability classification</label>
+                  <select required value={form.classification} onChange={update("classification")}>
+                    <option value="" disabled>Select classification</option>
+                    {CLASSIFICATIONS.map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
                   </select>
+                  {fieldError("disabilityClassification")}
                 </div>
+              )}
+
+              {!accountReady && (
+                <>
+                  <div>
+                    <label className="field-label">Email address</label>
+                    <input required type="email" value={form.email} onChange={update("email")}
+                      placeholder="you@example.com" />
+                    {fieldError("email")}
+                  </div>
+
+                  <div>
+                    <label className="field-label">Password (8+ characters)</label>
+                    <input required type="password" minLength={8} value={form.password}
+                      onChange={update("password")} autoComplete="new-password" />
+                    {fieldError("password")}
+                  </div>
+                </>
               )}
             </div>
 
-            <button className="button primary full" type="submit">
-              Submit sample registration <ArrowRight size={17} />
+            {formError && <p className="form-error" role="alert">{formError}</p>}
+
+            <button className="button primary full" type="submit" disabled={loading}>
+              {loading ? "Submitting..." : "Submit application"} <ArrowRight size={17} />
             </button>
 
+            <p className="auth-bottom">
+              Already have an account?{" "}
+              <button type="button" onClick={() => setPage("login")}>Log in</button>
+            </p>
+
             <p className="table-footnote">
-              This is a demonstration form. No actual application is submitted.
+              Demo environment: use made-up details only. Your government ID number is
+              scrambled and never stored as typed.
             </p>
           </form>
         )}
@@ -837,7 +1015,7 @@ function SeniorContent({ tab }) {
             </div>
             <div>
               <small>NAME</small>
-              <b>Alysse Angelie Dela Cruz</b>
+              <b>Juan Dela Cruz</b>
               <small>SC ID NUMBER</small>
               <b>SC-0000-0001</b>
             </div>
@@ -879,7 +1057,7 @@ function SeniorContent({ tab }) {
 
       <div className="content-card">
         <span className="eyebrow">YOUR REGISTRATION</span>
-        <h2>You're all set, Alysse Angelie.</h2>
+        <h2>You're all set, Juan.</h2>
         <p className="muted">
           Your sample registration has been approved. You can view your digital
           ID and present its QR code to participating establishments for
@@ -1074,7 +1252,7 @@ function LguContent({ tab, applications, setApplications }) {
             </thead>
             <tbody>
               <tr>
-                <td>Alysse Angelie Dela Cruz</td>
+                <td>Juan Dela Cruz</td>
                 <td>APP-2026-014</td>
                 <td>Oct 29, 2026</td>
                 <td>
@@ -1155,7 +1333,7 @@ function EstablishmentContent({
             <CheckCircle2 size={23} />
             <div>
               <b>Sample ID verified</b>
-              <p>Alysse Angelie Dela Cruz · Registration status: Active</p>
+              <p>Juan Dela Cruz · Registration status: Active</p>
               <small>
                 Only limited eligibility information is displayed in this demo.
               </small>
