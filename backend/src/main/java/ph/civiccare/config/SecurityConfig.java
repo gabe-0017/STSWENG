@@ -52,6 +52,7 @@ public class SecurityConfig {
                         // The built React app (classpath:/static) is served by this same service:
                         // "/" is index.html, "/*.*" covers root files such as favicons, "/assets/**" the bundles.
                         .requestMatchers(HttpMethod.GET, "/", "/*.*", "/assets/**").permitAll()
+                        .requestMatchers(HttpMethod.HEAD, "/", "/*.*", "/assets/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(rs -> rs.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
