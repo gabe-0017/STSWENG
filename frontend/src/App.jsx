@@ -75,6 +75,48 @@ function pageFromHash() {
   return PAGES.includes(name) ? name : "home";
 }
 
+const TEXT_SCALES = [1, 1.15, 1.3, 1.5];
+
+/* Floating "A- A+" control: zooms the whole site and remembers the choice. */
+function TextSizeControl() {
+  const [level, setLevel] = useState(() => {
+    try {
+      const saved = Number(localStorage.getItem("ccid:textLevel"));
+      return saved >= 0 && saved < TEXT_SCALES.length ? saved : 0;
+    } catch {
+      return 0;
+    }
+  });
+
+  useEffect(() => {
+    document.documentElement.style.zoom = TEXT_SCALES[level];
+    try {
+      localStorage.setItem("ccid:textLevel", String(level));
+    } catch {
+      /* storage unavailable: the choice just won't be remembered */
+    }
+  }, [level]);
+
+  return (
+    <div className="text-size" role="group" aria-label="Text size">
+      <button
+        onClick={() => setLevel((l) => Math.max(0, l - 1))}
+        disabled={level === 0}
+        aria-label="Make text smaller"
+      >
+        A<span>-</span>
+      </button>
+      <button
+        onClick={() => setLevel((l) => Math.min(TEXT_SCALES.length - 1, l + 1))}
+        disabled={level === TEXT_SCALES.length - 1}
+        aria-label="Make text larger"
+      >
+        A<span>+</span>
+      </button>
+    </div>
+  );
+}
+
 function App() {
   const [routePage, setRoutePage] = useState(pageFromHash);
   // The dashboard needs a login: without a session, show the login page instead.
@@ -155,6 +197,7 @@ function App() {
 
   return (
     <div className="app-shell">
+      <TextSizeControl />
       {page !== "dashboard" && (
       <header className="topbar">
         <button
