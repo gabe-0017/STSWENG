@@ -27,16 +27,10 @@ import { api, saveSession, clearSession, getSession } from "./api";
 
 const roles = [
   {
-    id: "senior",
-    label: "SC Member",
+    id: "citizen",
+    label: "Citizen",
     icon: Users,
-    description: "Manage your Senior Citizen registration and digital ID.",
-  },
-  {
-    id: "pwd",
-    label: "PWD Member",
-    icon: HeartHandshake,
-    description: "Manage your PWD registration and digital ID.",
+    description: "Manage your Senior Citizen and PWD registrations and digital IDs.",
   },
   {
     id: "lgu",
@@ -61,7 +55,7 @@ const roles = [
 const ROLE_MAP = {
   // One CITIZEN role covers both Senior Citizen and PWD registrants. The dashboard view
   // (senior vs PWD) will later be chosen from the registration type, not from the role.
-  CITIZEN: "senior",
+  CITIZEN: "citizen",
   LGU_STAFF: "lgu",
   ESTABLISHMENT: "establishment",
   GOV_ADMIN: "government",
@@ -129,7 +123,7 @@ function App() {
     }
   }
 
-  const [role, setRole] = useState(() => ROLE_MAP[getSession()?.role] ?? "senior");
+  const [role, setRole] = useState(() => ROLE_MAP[getSession()?.role] ?? "citizen");
   const [mobileMenu, setMobileMenu] = useState(false);
   const [notice, setNotice] = useState("");
 
@@ -161,6 +155,7 @@ function App() {
 
   return (
     <div className="app-shell">
+      {page !== "dashboard" && (
       <header className="topbar">
         <button
           className="brand"
@@ -200,6 +195,7 @@ function App() {
           </button>
         </nav>
       </header>
+      )}
 
       {page === "home" && (
         <HomePage openLogin={openLogin} setPage={setPage} goSection={goSection} />
@@ -213,8 +209,8 @@ function App() {
       {page === "register" && (
         <RegisterPage
           setPage={setPage}
-          onRegistered={(type) => {
-            setRole(type);
+          onRegistered={() => {
+            setRole("citizen");
             setPage("dashboard");
           }}
         />
@@ -643,7 +639,10 @@ function RegisterPage({ setPage, onRegistered }) {
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
   // Once the account exists, a retry (e.g. after a validation error) skips sign-up.
-  const [accountReady, setAccountReady] = useState(false);
+  const [accountReady, setAccountReady] = useState(
+    () => getSession()?.role === "CITIZEN"
+  );
+  const loggedInCitizen = getSession()?.role === "CITIZEN";
   const [done, setDone] = useState(false);
 
   function update(name) {
@@ -704,9 +703,11 @@ function RegisterPage({ setPage, onRegistered }) {
 
       <div className="register-card">
         <span className="eyebrow">SC / PWD REGISTRATION</span>
-        <h2>Create a registration request</h2>
+        <h2>{loggedInCitizen ? "Apply for an ID" : "Create a registration request"}</h2>
         <p className="muted">
-          Select your registration type and enter your information below.
+          {loggedInCitizen
+            ? "You are logged in. Choose the ID you want to apply for. Use the same government ID number as your other application."
+            : "Select your registration type and enter your information below."}
         </p>
 
         {done ? (
@@ -719,7 +720,7 @@ function RegisterPage({ setPage, onRegistered }) {
             </p>
             <button
               className="button primary"
-              onClick={() => onRegistered(registrationType)}
+              onClick={() => onRegistered()}
             >
               Go to my dashboard
             </button>
@@ -854,8 +855,7 @@ function RegisterPage({ setPage, onRegistered }) {
    ========================================================================== */
 
 function getTabsForRole(role) {
-  if (role === "senior") return ["Overview", "My Digital ID"];
-  if (role === "pwd") return ["Overview", "My Digital ID"];
+  if (role === "citizen") return ["Overview", "My Digital ID"];
   if (role === "lgu") return ["Overview", "Applications"];
   if (role === "establishment") return ["Overview", "Verify ID", "Discounts"];
   return ["Overview", "Registry", "Tax Claims"];
@@ -876,6 +876,13 @@ function Dashboard({ role, setPage, logout, notice, setNotice }) {
 
   const selected = roles.find((r) => r.id === role) || roles[0];
   const tabs = getTabsForRole(role);
+
+  // Who is logged in (name shown in the sidebar and top bar)
+  const [account, setAccount] = useState(null);
+  useEffect(() => {
+    api("/me").then(setAccount).catch(() => {});
+  }, []);
+  const displayName = account?.fullName ?? "…";
 
   function selectTab(name) {
     setTab(name);
@@ -904,9 +911,9 @@ function Dashboard({ role, setPage, logout, notice, setNotice }) {
 
         <div className="sidebar-bottom">
           <div className="profile-mini">
-            <span>{selected.label.charAt(0)}</span>
+            <span>{displayName.charAt(0)}</span>
             <div>
-              <b>Demo User</b>
+              <b>{displayName}</b>
               <small>{selected.label}</small>
             </div>
           </div>
@@ -927,9 +934,9 @@ function Dashboard({ role, setPage, logout, notice, setNotice }) {
             </p>
           </div>
           <div className="dash-user">
-            <span className="avatar-small">{selected.label.charAt(0)}</span>
+            <span className="avatar-small">{displayName.charAt(0)}</span>
             <div>
-              <b>Demo User</b>
+              <b>{displayName}</b>
               <small>{selected.label}</small>
             </div>
             <ChevronDown size={16} />
@@ -945,8 +952,9 @@ function Dashboard({ role, setPage, logout, notice, setNotice }) {
           </div>
         )}
 
-        {role === "senior" && <SeniorContent tab={tab} />}
-        {role === "pwd" && <PwdContent tab={tab} />}
+        {role === "citizen" && (
+          <CitizenContent tab={tab} setTab={selectTab} setPage={setPage} account={account} />
+        )}
         {role === "lgu" && (
           <LguContent
             tab={tab}
@@ -983,210 +991,216 @@ function Metric({ label, value, note, icon: Icon }) {
 }
 
 /* ==========================================================================
-   Dashboard content: Senior Citizen
+   Dashboard content: Citizen (Senior Citizen and/or PWD, real data)
    ========================================================================== */
 
-function SeniorContent({ tab }) {
-  if (tab === "My Digital ID") {
-    return (
-      <div className="content-card id-preview">
-        <div>
-          <span className="eyebrow">DIGITAL IDENTIFICATION</span>
-          <h2>Your sample Digital ID</h2>
-          <p className="muted">
-            This is a fictional demonstration card, not a valid identification
-            document.
-          </p>
-        </div>
+const TYPE_LABEL = { SC: "Senior Citizen", PWD: "PWD" };
 
-        <div className="sample-id">
-          <div className="id-card-top">
-            <div className="mini-seal">SC</div>
-            <div>
-              <b>REPUBLIC OF THE PHILIPPINES</b>
-              <small>SENIOR CITIZEN IDENTIFICATION</small>
-            </div>
-            <BadgeCheck size={22} />
-          </div>
+const STATUS_INFO = {
+  SUBMITTED: { label: "Pending review", tone: "pending" },
+  APPROVED: { label: "Approved", tone: "" },
+  AMENDED: { label: "Approved (amended)", tone: "" },
+  REJECTED: { label: "Not approved", tone: "rejected" },
+  REVOKED: { label: "Revoked", tone: "rejected" },
+  EXPIRED: { label: "Expired", tone: "rejected" },
+};
 
-          <div className="sample-id-person">
-            <div className="avatar-placeholder">
-              <Users size={30} />
-            </div>
-            <div>
-              <small>NAME</small>
-              <b>Juan Dela Cruz</b>
-              <small>SC ID NUMBER</small>
-              <b>SC-0000-0001</b>
-            </div>
-            <div className="fake-qr">
-              <QrCode size={57} />
-            </div>
-          </div>
+function formatDate(value) {
+  if (!value) return "";
+  return new Date(value).toLocaleDateString("en-PH", {
+    year: "numeric", month: "long", day: "numeric",
+  });
+}
 
-          <div className="id-warning">
-            DEMO CARD · NOT VALID FOR IDENTIFICATION
-          </div>
-        </div>
-      </div>
-    );
-  }
+function classificationLabel(value) {
+  return CLASSIFICATIONS.find(([v]) => v === value)?.[1] ?? value;
+}
 
+function StatusPill({ status }) {
+  const info = STATUS_INFO[status] ?? { label: status, tone: "pending" };
   return (
-    <>
-      <div className="metric-grid">
-        <Metric
-          label="Application status"
-          value="Approved"
-          note="Sample application"
-          icon={BadgeCheck}
-        />
-        <Metric
-          label="SC ID number"
-          value="0001"
-          note="Demo identifier"
-          icon={WalletCards}
-        />
-        <Metric
-          label="QR status"
-          value="Active"
-          note="Sample verification"
-          icon={QrCode}
-        />
-      </div>
-
-      <div className="content-card">
-        <span className="eyebrow">YOUR REGISTRATION</span>
-        <h2>You're all set, Juan.</h2>
-        <p className="muted">
-          Your sample registration has been approved. You can view your digital
-          ID and present its QR code to participating establishments for
-          verification.
-        </p>
-        <div className="status-row">
-          <span className="status-pill">
-            <CheckCircle2 size={15} /> Approved
-          </span>
-          <span className="muted">Last updated: October 30, 2026</span>
-        </div>
-      </div>
-    </>
+    <span className={`status-pill ${info.tone}`.trim()}>
+      <CheckCircle2 size={15} /> {info.label}
+    </span>
   );
 }
 
+function CitizenContent({ tab, setTab, setPage, account }) {
+  const [items, setItems] = useState(null);
+  const [error, setError] = useState("");
 
-/* ==========================================================================
-   Dashboard content: Person with Disability
-   ========================================================================== */
+  function load() {
+    setError("");
+    api("/me/registrations")
+      .then(setItems)
+      .catch((err) => setError(err.message));
+  }
+  useEffect(load, []);
 
-function PwdContent({ tab }) {
-  if (tab === "My Digital ID") {
+  if (error) {
     return (
-      <div className="content-card id-preview">
-        <div>
-          <span className="eyebrow">DIGITAL IDENTIFICATION</span>
-          <h2>Your sample PWD ID</h2>
-          <p className="muted">
-            This is a fictional demonstration card, not a valid identification
-            document.
-          </p>
-        </div>
+      <div className="content-card">
+        <p className="form-error" role="alert">{error}</p>
+        <button className="button secondary" onClick={load}>Try again</button>
+      </div>
+    );
+  }
+  if (items === null) {
+    return <div className="content-card"><p className="muted">Loading your records…</p></div>;
+  }
 
-        <div className="sample-id">
-          <div className="id-card-top">
-            <div className="mini-seal">PWD</div>
-            <div>
-              <b>REPUBLIC OF THE PHILIPPINES</b>
-              <small>PERSON WITH DISABILITY IDENTIFICATION</small>
-            </div>
-            <BadgeCheck size={22} />
-          </div>
+  const firstName = account?.fullName?.split(" ")[0] ?? "";
+  const missingTypes = ["SC", "PWD"].filter(
+    (t) => !items.some((r) => r.recordType === t && ["SUBMITTED", "APPROVED", "AMENDED"].includes(r.status))
+  );
 
-          <div className="sample-id-person">
-            <div className="avatar-placeholder">
-              <HeartHandshake size={30} />
-            </div>
-            <div>
-              <small>NAME</small>
-              <b>Juan Miguel Santos</b>
-              <small>PWD ID NUMBER</small>
-              <b>PWD-0000-0001</b>
-              <small>DISABILITY CLASSIFICATION</small>
-              <b>Physical Disability</b>
-            </div>
-            <div className="fake-qr">
-              <QrCode size={57} />
-            </div>
-          </div>
-
-          <div className="id-warning">
-            DEMO CARD · NOT VALID FOR IDENTIFICATION
-          </div>
-        </div>
+  if (items.length === 0) {
+    return (
+      <div className="content-card">
+        <span className="eyebrow">GET STARTED</span>
+        <h2>Hello{firstName ? `, ${firstName}` : ""}.</h2>
+        <p className="muted">
+          You have not applied for an ID yet. Apply for a Senior Citizen or PWD
+          ID and your local office will review it.
+        </p>
+        <button className="button primary" onClick={() => setPage("register")}>
+          Apply for an ID <ArrowRight size={17} />
+        </button>
       </div>
     );
   }
 
+  if (tab === "My Digital ID") {
+    const cards = items.filter((r) => r.idCard && (r.status === "APPROVED" || r.status === "AMENDED"));
+    if (cards.length === 0) {
+      return (
+        <div className="content-card">
+          <span className="eyebrow">DIGITAL IDENTIFICATION</span>
+          <h2>Your ID is not ready yet</h2>
+          <p className="muted">
+            Your digital ID appears here as soon as your application is approved.
+            You can follow its progress on the Overview page.
+          </p>
+          <button className="button secondary" onClick={() => setTab("Overview")}>
+            Go to overview
+          </button>
+        </div>
+      );
+    }
+    return (
+      <div className="id-stack">
+        {cards.map((r) => (
+          <div className="content-card id-preview" key={r.id}>
+            <div>
+              <span className="eyebrow">DIGITAL IDENTIFICATION</span>
+              <h2>{TYPE_LABEL[r.recordType]} ID</h2>
+              <p className="muted">
+                Issued {formatDate(r.idCard.issuedAt)} · Valid until {formatDate(r.idCard.validUntil)}
+              </p>
+            </div>
+
+            <div className="sample-id">
+              <div className="id-card-top">
+                <div className="mini-seal">{r.recordType}</div>
+                <div>
+                  <b>REPUBLIC OF THE PHILIPPINES</b>
+                  <small>
+                    {r.recordType === "SC"
+                      ? "SENIOR CITIZEN IDENTIFICATION"
+                      : "PERSON WITH DISABILITY IDENTIFICATION"}
+                  </small>
+                </div>
+                <BadgeCheck size={22} />
+              </div>
+
+              <div className="sample-id-person">
+                <div className="avatar-placeholder">
+                  {r.recordType === "SC" ? <Users size={30} /> : <HeartHandshake size={30} />}
+                </div>
+                <div>
+                  <small>NAME</small>
+                  <b>{r.applicant.fullName}</b>
+                  <small>{r.recordType} ID NUMBER</small>
+                  <b>{r.idCard.cardNumber}</b>
+                </div>
+                <div className="fake-qr">
+                  <QrCode size={57} />
+                </div>
+              </div>
+
+              <div className="id-warning">
+                PROTOTYPE · SYNTHETIC DATA · NOT VALID FOR IDENTIFICATION
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  const approved = items.filter((r) => r.status === "APPROVED" || r.status === "AMENDED").length;
+  const pending = items.filter((r) => r.status === "SUBMITTED").length;
+
   return (
     <>
       <div className="metric-grid">
-        <Metric
-          label="Application status"
-          value="Approved"
-          note="Sample application"
-          icon={BadgeCheck}
-        />
-        <Metric
-          label="PWD ID number"
-          value="0001"
-          note="Demo identifier"
-          icon={WalletCards}
-        />
-        <Metric
-          label="QR status"
-          value="Active"
-          note="Sample verification"
-          icon={QrCode}
-        />
+        <Metric label="Applications" value={items.length} note="Senior Citizen and PWD" icon={ClipboardList} />
+        <Metric label="Approved IDs" value={approved} note="Ready to use" icon={BadgeCheck} />
+        <Metric label="Waiting for review" value={pending} note="With your local office" icon={FileCheck2} />
       </div>
 
       <div className="content-card">
-        <span className="eyebrow">YOUR REGISTRATION</span>
-        <h2>Welcome back, Juan Miguel.</h2>
-        <p className="muted">
-          Your sample PWD registration has been approved. You can view
-          your digital PWD ID and present its QR code to participating
-          establishments for verification of your eligibility for applicable
-          benefits and privileges.
-        </p>
+        <span className="eyebrow">YOUR APPLICATIONS</span>
+        <h2>Hello{firstName ? `, ${firstName}` : ""}.</h2>
 
-        <div className="status-row">
-          <span className="status-pill">
-            <CheckCircle2 size={15} /> Approved
-          </span>
-          <span className="muted">
-            Last updated: October 30, 2026
-          </span>
-        </div>
-      </div>
+        {items.map((r) => (
+          <div className="registration-card" key={r.id}>
+            <div className="status-row">
+              <b>{TYPE_LABEL[r.recordType]} ID</b>
+              <StatusPill status={r.status} />
+            </div>
 
-      <div className="content-card">
-        <span className="eyebrow">PWD INFORMATION</span>
-        <h2>Your registration details</h2>
+            <div className="oversight-row">
+              <span>Submitted</span>
+              <b>{formatDate(r.submittedAt)}</b>
+            </div>
+            <div className="oversight-row">
+              <span>Local office</span>
+              <b>{r.lguCode}</b>
+            </div>
+            {r.recordType === "PWD" && r.disabilityClassification && (
+              <div className="oversight-row">
+                <span>Disability classification</span>
+                <b>{classificationLabel(r.disabilityClassification)}</b>
+              </div>
+            )}
+            {r.idCard && (
+              <div className="oversight-row">
+                <span>ID number</span>
+                <b>{r.idCard.cardNumber}</b>
+              </div>
+            )}
+            {r.reason && (
+              <div className="oversight-row">
+                <span>Reason from your local office</span>
+                <b>{r.reason}</b>
+              </div>
+            )}
+            {r.status === "SUBMITTED" && (
+              <p className="muted">
+                Your application is waiting for review. This page updates when you refresh it.
+              </p>
+            )}
+          </div>
+        ))}
 
-        <div className="oversight-row">
-          <span>Disability classification</span>
-          <b>Physical Disability</b>
-        </div>
-
-        <div className="oversight-row">
-          <span>Registration type</span>
-          <b>PWD</b>
-        </div>
-
-        <div className="oversight-row">
-          <span>Application reference</span>
-          <b>APP-PWD-2026-001</b>
+        <div className="btn-row">
+          <button className="button secondary" onClick={load}>Refresh</button>
+          {missingTypes.length > 0 && (
+            <button className="button primary" onClick={() => setPage("register")}>
+              Apply for {missingTypes.map((t) => TYPE_LABEL[t]).join(" or ")} ID <ArrowRight size={17} />
+            </button>
+          )}
         </div>
       </div>
     </>
