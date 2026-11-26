@@ -2042,3 +2042,39 @@ button:disabled {
     animation: none !important;
   }
 }
+
+
+/* Citizen dashboard */
+.id-stack {
+  display: grid;
+  gap: 22px;
+}
+
+.registration-card {
+  border: 1px solid #e3ebe4;
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-top: 16px;
+}
+
+.registration-card .status-row {
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.status-pill.rejected {
+  background: #fbe9e7;
+  color: #a03a2d;
+}
+
+.btn-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+
+/* The dashboard has its own sidebar, so it uses the full viewport height */
+.dashboard-layout {
+  min-height: 100vh;
+}
