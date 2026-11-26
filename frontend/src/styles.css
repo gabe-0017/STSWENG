@@ -2078,3 +2078,124 @@ button:disabled {
 .dashboard-layout {
   min-height: 100vh;
 }
+
+
+/* LGU review queue */
+th {
+  font-size: 11px;
+}
+
+td {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.table-action {
+  font-size: 12px;
+  padding: 8px 14px;
+}
+
+.filter-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 18px 0 4px;
+}
+
+.chip {
+  border: 1.5px solid #cfe0d4;
+  background: #fff;
+  color: #3c5a49;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.chip.active {
+  background: #176b45;
+  border-color: #176b45;
+  color: #fff;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.button.small {
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+.button.danger {
+  background: #fff;
+  color: #a03a2d;
+  border: 1.5px solid #e2b3ac;
+}
+
+.button.danger:hover {
+  background: #fbe9e7;
+}
+
+.button.danger.solid {
+  background: #a03a2d;
+  border-color: #a03a2d;
+  color: #fff;
+}
+
+.button.danger.solid:hover {
+  background: #8a2f24;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 38, 28, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 50;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 14px;
+  padding: 26px 28px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+}
+
+.modal .oversight-row b {
+  text-align: right;
+  max-width: 60%;
+}
+
+.modal textarea {
+  width: 100%;
+  border: 1.5px solid #cfe0d4;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.icon-button {
+  border: 0;
+  background: transparent;
+  color: #5b7566;
+  padding: 6px;
+  border-radius: 6px;
+}
+
+.icon-button:hover {
+  background: #eaf2eb;
+}

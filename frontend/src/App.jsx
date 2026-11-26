@@ -872,7 +872,6 @@ function Dashboard({ role, setPage, logout, notice, setNotice }) {
   const [tab, setTab] = useState("Overview");
   const [verified, setVerified] = useState(false);
   const [discounts, setDiscounts] = useState(12);
-  const [applications, setApplications] = useState(8);
 
   const selected = roles.find((r) => r.id === role) || roles[0];
   const tabs = getTabsForRole(role);
@@ -955,13 +954,7 @@ function Dashboard({ role, setPage, logout, notice, setNotice }) {
         {role === "citizen" && (
           <CitizenContent tab={tab} setTab={selectTab} setPage={setPage} account={account} />
         )}
-        {role === "lgu" && (
-          <LguContent
-            tab={tab}
-            applications={applications}
-            setApplications={setApplications}
-          />
-        )}
+        {role === "lgu" && <LguContent tab={tab} setTab={selectTab} />}
         {role === "establishment" && (
           <EstablishmentContent
             tab={tab}
@@ -1209,109 +1202,376 @@ function CitizenContent({ tab, setTab, setPage, account }) {
 
 
 /* ==========================================================================
-   Dashboard content: LGU / OSCA staff
+   Dashboard content: LGU / OSCA staff (real review queue)
    ========================================================================== */
 
-function LguContent({ tab, applications, setApplications }) {
-  function approveOne() {
-    setApplications(Math.max(0, applications - 1));
-  }
+const LGU_FILTERS = [
+  ["SUBMITTED", "Pending"],
+  ["APPROVED", "Approved"],
+  ["REJECTED", "Not approved"],
+  ["REVOKED", "Revoked"],
+  ["ALL", "All"],
+];
+
+function ageFrom(dateString) {
+  const born = new Date(dateString);
+  const now = new Date();
+  let age = now.getFullYear() - born.getFullYear();
+  const monthDiff = now.getMonth() - born.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < born.getDate())) age -= 1;
+  return age;
+}
+
+function LguContent({ tab, setTab }) {
+  const [counts, setCounts] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    Promise.all(
+      ["SUBMITTED", "APPROVED", "REJECTED", "REVOKED"].map((status) =>
+        api(`/registrations?status=${status}&size=1`).then((r) => r.totalElements)
+      )
+    )
+      .then(([pending, approved, rejected, revoked]) =>
+        setCounts({ pending, approved, notApproved: rejected + revoked })
+      )
+      .catch(() => setCounts(null));
+  }, [refreshKey]);
+
+  const show = (n) => (counts ? n : "…");
+  const changed = () => setRefreshKey((k) => k + 1);
 
   return (
     <>
       <div className="metric-grid">
-        <Metric
-          label="Pending applications"
-          value={applications}
-          note="Awaiting review"
-          icon={ClipboardList}
-        />
-        <Metric
-          label="Approved this month"
-          value="124"
-          note="Sample figure"
-          icon={CheckCircle2}
-        />
-        <Metric
-          label="Flagged duplicates"
-          value="3"
-          note="For manual review"
-          icon={ShieldCheck}
-        />
+        <Metric label="Pending applications" value={show(counts?.pending)} note="Waiting for review" icon={ClipboardList} />
+        <Metric label="Approved IDs" value={show(counts?.approved)} note="Currently valid" icon={CheckCircle2} />
+        <Metric label="Not approved" value={show(counts?.notApproved)} note="Rejected or revoked" icon={ShieldCheck} />
       </div>
 
-      <div className="content-card">
-        <div className="card-heading">
-          <div>
-            <span className="eyebrow">REGISTRATION QUEUE</span>
-            <h2>
-              {tab === "Applications"
-                ? "Applications for review"
-                : "Recent applications"}
-            </h2>
-          </div>
-          <span className="muted">Sample records</span>
-        </div>
+      {tab === "Applications" ? (
+        <ApplicationsPanel refreshKey={refreshKey} onChanged={changed} />
+      ) : (
+        <ApplicationsPanel
+          compact
+          refreshKey={refreshKey}
+          onChanged={changed}
+          onSeeAll={() => setTab("Applications")}
+        />
+      )}
+    </>
+  );
+}
 
+function ApplicationsPanel({ compact = false, refreshKey, onChanged, onSeeAll }) {
+  const [filter, setFilter] = useState("SUBMITTED");
+  const [page, setPage] = useState(0);
+  const [data, setData] = useState(null);
+  const [error, setError] = useState("");
+  const [openId, setOpenId] = useState(null);
+  const [flash, setFlash] = useState("");
+  const size = compact ? 5 : 10;
+
+  function load() {
+    setError("");
+    const params = new URLSearchParams({ page, size });
+    if (filter !== "ALL") params.set("status", filter);
+    // Pending: oldest first (fair queue). Everything else: newest first.
+    params.set("sort", filter === "SUBMITTED" ? "submittedAt,asc" : "submittedAt,desc");
+    api(`/registrations?${params}`)
+      .then(setData)
+      .catch((err) => setError(err.message));
+  }
+  useEffect(load, [filter, page, refreshKey]);
+
+  function pickFilter(value) {
+    setFilter(value);
+    setPage(0);
+    setFlash("");
+  }
+
+  return (
+    <div className="content-card">
+      <div className="card-heading">
+        <div>
+          <span className="eyebrow">REGISTRATION QUEUE</span>
+          <h2>{compact ? "Next in the queue" : "Applications"}</h2>
+        </div>
+        {compact && (
+          <button className="button secondary small" onClick={onSeeAll}>
+            See all applications
+          </button>
+        )}
+      </div>
+
+      {!compact && (
+        <div className="filter-chips" role="group" aria-label="Filter by status">
+          {LGU_FILTERS.map(([value, label]) => (
+            <button
+              key={value}
+              className={filter === value ? "chip active" : "chip"}
+              onClick={() => pickFilter(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {flash && (
+        <div className="demo-banner">
+          <span><BadgeCheck size={17} /> {flash}</span>
+          <button onClick={() => setFlash("")} aria-label="Dismiss">×</button>
+        </div>
+      )}
+
+      {error && <p className="form-error" role="alert">{error}</p>}
+      {!data && !error && <p className="muted">Loading applications…</p>}
+
+      {data && data.content.length === 0 && (
+        <p className="muted">
+          {filter === "SUBMITTED"
+            ? "All caught up. No applications are waiting for review."
+            : "No applications match this filter."}
+        </p>
+      )}
+
+      {data && data.content.length > 0 && (
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
                 <th>Applicant</th>
-                <th>Reference</th>
-                <th>Date submitted</th>
+                <th>ID type</th>
+                <th>Submitted</th>
                 <th>Status</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td>Juan Dela Cruz</td>
-                <td>APP-2026-014</td>
-                <td>Oct 29, 2026</td>
-                <td>
-                  <span className="status-pill pending">Pending</span>
-                </td>
-                <td>
-                  <button className="table-action" onClick={approveOne}>
-                    Approve demo
-                  </button>
-                </td>
-              </tr>
-              <tr>
-                <td>Elena Reyes</td>
-                <td>APP-2026-013</td>
-                <td>Oct 28, 2026</td>
-                <td>
-                  <span className="status-pill">Approved</span>
-                </td>
-                <td>
-                  <span className="muted">Reviewed</span>
-                </td>
-              </tr>
-              <tr>
-                <td>Ramon Garcia</td>
-                <td>APP-2026-012</td>
-                <td>Oct 27, 2026</td>
-                <td>
-                  <span className="status-pill pending">Pending</span>
-                </td>
-                <td>
-                  <button className="table-action" onClick={approveOne}>
-                    Approve demo
-                  </button>
-                </td>
-              </tr>
+              {data.content.map((r) => (
+                <tr key={r.id}>
+                  <td><b>{r.fullName}</b></td>
+                  <td>{TYPE_LABEL[r.recordType]}</td>
+                  <td>{formatDate(r.submittedAt)}</td>
+                  <td><StatusPill status={r.status} /></td>
+                  <td>
+                    <button className="table-action" onClick={() => setOpenId(r.id)}>
+                      {r.status === "SUBMITTED" ? "Review" : "View"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
+      )}
 
-        <p className="table-footnote">
-          Actions update this page's sample counters only. No actual application
-          is approved.
-        </p>
+      {!compact && data && data.totalPages > 1 && (
+        <div className="pager">
+          <button className="button secondary small" disabled={page === 0} onClick={() => setPage(page - 1)}>
+            Previous
+          </button>
+          <span className="muted">Page {page + 1} of {data.totalPages}</span>
+          <button
+            className="button secondary small"
+            disabled={page + 1 >= data.totalPages}
+            onClick={() => setPage(page + 1)}
+          >
+            Next
+          </button>
+        </div>
+      )}
+
+      {openId && (
+        <ReviewDialog
+          id={openId}
+          onClose={() => setOpenId(null)}
+          onDone={(message) => {
+            setOpenId(null);
+            setFlash(message);
+            load();
+            onChanged();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ReviewDialog({ id, onClose, onDone }) {
+  const [detail, setDetail] = useState(null);
+  const [error, setError] = useState("");
+  const [mode, setMode] = useState(null); // "reject" | "revoke" | null
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    api(`/registrations/${id}`).then(setDetail).catch((err) => setError(err.message));
+  }, [id]);
+
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  async function act(kind) {
+    setBusy(true);
+    setError("");
+    try {
+      await api(`/registrations/${id}/${kind}`, {
+        method: "POST",
+        body: kind === "approve" ? undefined : { reason: reason.trim() },
+      });
+      const verb = { approve: "Approved", reject: "Rejected", revoke: "Revoked" }[kind];
+      onDone(`${verb} ${detail.applicant.fullName}'s ${TYPE_LABEL[detail.recordType]} application.`);
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  }
+
+  const canDecide = detail?.status === "SUBMITTED";
+  const canRevoke = detail && (detail.status === "APPROVED" || detail.status === "AMENDED");
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="review-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="card-heading">
+          <div>
+            <span className="eyebrow">APPLICATION DETAILS</span>
+            <h2 id="review-title">
+              {detail ? `${TYPE_LABEL[detail.recordType]} ID` : "Loading…"}
+            </h2>
+          </div>
+          <button className="icon-button" onClick={onClose} aria-label="Close">
+            <X size={18} />
+          </button>
+        </div>
+
+        {detail && (
+          <div className="detail-list">
+            <div className="oversight-row">
+              <span>Status</span>
+              <StatusPill status={detail.status} />
+            </div>
+            <div className="oversight-row">
+              <span>Applicant</span>
+              <b>{detail.applicant.fullName}</b>
+            </div>
+            <div className="oversight-row">
+              <span>Date of birth</span>
+              <b>{formatDate(detail.applicant.birthDate)} (age {ageFrom(detail.applicant.birthDate)})</b>
+            </div>
+            <div className="oversight-row">
+              <span>Address</span>
+              <b>{detail.applicant.address}</b>
+            </div>
+            {detail.applicant.contactNumber && (
+              <div className="oversight-row">
+                <span>Contact number</span>
+                <b>{detail.applicant.contactNumber}</b>
+              </div>
+            )}
+            {detail.recordType === "PWD" && detail.disabilityClassification && (
+              <div className="oversight-row">
+                <span>Disability classification</span>
+                <b>{classificationLabel(detail.disabilityClassification)}</b>
+              </div>
+            )}
+            <div className="oversight-row">
+              <span>Local office</span>
+              <b>{detail.lguCode}</b>
+            </div>
+            <div className="oversight-row">
+              <span>Submitted</span>
+              <b>{formatDate(detail.submittedAt)}</b>
+            </div>
+            {detail.reviewedAt && (
+              <div className="oversight-row">
+                <span>Reviewed</span>
+                <b>{formatDate(detail.reviewedAt)}</b>
+              </div>
+            )}
+            {detail.idCard && (
+              <div className="oversight-row">
+                <span>ID number</span>
+                <b>{detail.idCard.cardNumber}</b>
+              </div>
+            )}
+            {detail.reason && (
+              <div className="oversight-row">
+                <span>Reason</span>
+                <b>{detail.reason}</b>
+              </div>
+            )}
+          </div>
+        )}
+
+        {mode && (
+          <div>
+            <label className="field-label" htmlFor="reason">
+              {mode === "reject" ? "Reason for rejecting" : "Reason for revoking"} (the applicant will see this)
+            </label>
+            <textarea
+              id="reason"
+              rows={3}
+              maxLength={500}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              autoFocus
+            />
+          </div>
+        )}
+
+        {error && <p className="form-error" role="alert">{error}</p>}
+
+        {detail && (canDecide || canRevoke) && (
+          <div className="btn-row">
+            {!mode && canDecide && (
+              <>
+                <button className="button primary" disabled={busy} onClick={() => act("approve")}>
+                  {busy ? "Approving..." : "Approve"}
+                </button>
+                <button className="button danger" disabled={busy} onClick={() => setMode("reject")}>
+                  Reject…
+                </button>
+              </>
+            )}
+            {!mode && canRevoke && (
+              <button className="button danger" onClick={() => setMode("revoke")}>
+                Revoke ID…
+              </button>
+            )}
+            {mode && (
+              <>
+                <button
+                  className="button danger solid"
+                  disabled={busy || reason.trim() === ""}
+                  onClick={() => act(mode)}
+                >
+                  {busy ? "Saving..." : mode === "reject" ? "Confirm rejection" : "Confirm revoke"}
+                </button>
+                <button
+                  className="button secondary"
+                  disabled={busy}
+                  onClick={() => { setMode(null); setReason(""); setError(""); }}
+                >
+                  Cancel
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
-    </>
+    </div>
   );
 }
 
